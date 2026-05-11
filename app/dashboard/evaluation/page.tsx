@@ -45,6 +45,36 @@ interface BatchTaskResult {
   error?: string;
 }
 
+function renderPreviewValue(v: unknown): string {
+  if (v === null || v === undefined) return "-";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return `[${v.map(renderPreviewValue).join(", ")}]`;
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
+function formatAnswerPreview(
+  detail: EvaluationDetail,
+  answers: Record<string, EvaluationAnswer>,
+): { order: number; text: string; answer: string }[] {
+  return detail.questions.map((q) => {
+    const a = answers[q.tmid];
+    let answer = "";
+    if (!a) {
+      answer = "-";
+    } else if (q.question_type === "01") {
+      const opt = q.options.find((o) => a.option_ids?.includes(o.wid));
+      answer = opt ? `${opt.text} (${opt.score})` : "-";
+    } else if (q.question_type === "07") {
+      const opts = q.options.filter((o) => a.option_ids?.includes(o.wid));
+      answer = opts.length > 0 ? opts.map((o) => `${o.text} (${o.score})`).join(", ") : "-";
+    } else {
+      answer = a.text || "-";
+    }
+    return { order: q.order, text: q.text || "", answer };
+  });
+}
+
 function getTaskStatus(task: EvaluationTask, t: ReturnType<typeof useTranslation>["t"]): { active: boolean; label: string; variant: "default" | "secondary" | "destructive" | "outline" } {
   const now = new Date();
   if (task.start_time) {
@@ -234,6 +264,7 @@ export default function EvaluationPage() {
         course_name: selectedTask.course_name || "",
         teacher_name: selectedTask.teacher_name || "",
         sequence: Number(selectedTask.sequence),
+        PJGXID: selectedTask.wid,
       });
       setPreviewResult(res);
       setPreviewOpen(true);
@@ -263,6 +294,7 @@ export default function EvaluationPage() {
         course_name: selectedTask.course_name || "",
         teacher_name: selectedTask.teacher_name || "",
         sequence: Number(selectedTask.sequence),
+        PJGXID: selectedTask.wid,
       });
       toast.success(t("evaluation.submit"));
       setDialogOpen(false);
@@ -369,6 +401,7 @@ export default function EvaluationPage() {
           course_name: task.course_name || "",
           teacher_name: task.teacher_name || "",
           sequence: Number(task.sequence),
+          PJGXID: task.wid,
         });
         results[i] = { ...results[i], detail: d, answers: filled, scoreResult: scoreRes, status: "filled" };
         setBatchTasks([...results]);
@@ -415,6 +448,7 @@ export default function EvaluationPage() {
           course_name: task.course_name || "",
           teacher_name: task.teacher_name || "",
           sequence: Number(task.sequence),
+          PJGXID: task.wid,
         });
         results[i] = { ...results[i], status: "submitted" };
         setBatchTasks([...results]);
@@ -674,7 +708,7 @@ export default function EvaluationPage() {
             {previewResult && Object.entries(previewResult).map(([k, v]) => (
               <div key={k} className="flex justify-between">
                 <span className="text-muted-foreground">{k}</span>
-                <span className="font-medium">{String(v)}</span>
+                <span className="font-medium">{renderPreviewValue(v)}</span>
               </div>
             ))}
           </div>
@@ -817,13 +851,26 @@ export default function EvaluationPage() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-2 text-sm">
+                <CardContent className="flex flex-col gap-3 text-sm">
                   {r.status === "filled" && r.scoreResult && (
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 rounded-md bg-muted/50 p-2">
                       {Object.entries(r.scoreResult).map(([k, v]) => (
                         <div key={k} className="flex justify-between">
                           <span className="text-muted-foreground">{k}</span>
-                          <span className="font-medium">{String(v)}</span>
+                          <span className="font-medium">{renderPreviewValue(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {r.status === "filled" && r.detail.questions.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">{t("evaluation.batchAnswers")}</span>
+                      {formatAnswerPreview(r.detail, r.answers).map((item) => (
+                        <div key={item.order} className="flex justify-between gap-2">
+                          <span className="text-muted-foreground truncate max-w-[60%]">
+                            {item.order}. {item.text}
+                          </span>
+                          <span className="font-medium shrink-0">{item.answer}</span>
                         </div>
                       ))}
                     </div>

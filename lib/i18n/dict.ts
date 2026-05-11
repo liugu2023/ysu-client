@@ -130,6 +130,7 @@ export const zh = {
     batchTaskStatusFailed: "失败",
     batchNoResults: "没有可提交的结果",
     batchScore: "得分",
+    batchAnswers: "填写结果",
     validation: {
       notLoaded: "问卷未加载",
       unanswered: "第 {order} 题未作答",
@@ -370,6 +371,7 @@ export const en = {
     batchTaskStatusFailed: "Failed",
     batchNoResults: "No results to submit",
     batchScore: "Score",
+    batchAnswers: "Answers",
     validation: {
       notLoaded: "Questionnaire not loaded",
       unanswered: "Question {order} unanswered",

@@ -107,7 +107,7 @@ export default function DashboardLayout({
   if (!hasHydrated) {
     return (
       <div className="flex min-h-svh items-center justify-center">
-        <div className="text-muted-foreground">{t("app.updating")}</div>
+        <div className="text-muted-foreground" suppressHydrationWarning>{t("app.updating")}</div>
       </div>
     );
   }
