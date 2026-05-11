@@ -1,6 +1,6 @@
 export const zh = {
   app: {
-    name: "燕大教务",
+    name: "燕大终端",
     nav: "导航",
     overview: "总览",
     studentInfo: "学生信息",
@@ -28,7 +28,7 @@ export const zh = {
     sectionAccount: "账户",
   },
   login: {
-    title: "燕山大学教务系统",
+    title: "燕大终端",
     usernameLabel: "学号",
     usernamePlaceholder: "请输入学号",
     passwordLabel: "密码",
@@ -50,6 +50,14 @@ export const zh = {
     mfaVerify: "验证",
     mfaVerifying: "验证中...",
     back: "返回",
+    errorMissingCredentials: "请输入学号和密码",
+    errorLoginFailed: "登录失败，请检查学号、密码与验证码",
+    errorCaptchaRequired: "请输入验证码",
+    errorMfaCodeRequired: "请输入 MFA 验证码",
+    errorMfaRequestFailed: "获取验证码失败",
+    errorMfaVerifyFailed: "MFA 验证失败",
+    mfaRequired: "需要 MFA 验证",
+    loginSuccess: "登录成功",
   },
   dashboard: {
     currentWeek: "第 {week} 周",
@@ -154,6 +162,7 @@ export const zh = {
     statusEnded: "已结束",
     cannotAnswer: "无法作答",
     dateRange: "{start} 至 {end}",
+    textPlaceholder: "请输入答案",
     noTasks: "暂无待评任务",
     batchSuccess: "批量评教完成：成功 {success} 个，失败 {failed} 个",
     noActiveTasks: "没有可自动评教的任务",
@@ -327,7 +336,7 @@ export const zh = {
 
 export const en = {
   app: {
-    name: "YSU Academic",
+    name: "YSU Terminal",
     nav: "Navigation",
     overview: "Overview",
     studentInfo: "Student Info",
@@ -355,7 +364,7 @@ export const en = {
     sectionAccount: "Account",
   },
   login: {
-    title: "YSU Academic System",
+    title: "YSU Terminal",
     usernameLabel: "Student ID",
     usernamePlaceholder: "Enter student ID",
     passwordLabel: "Password",
@@ -377,6 +386,14 @@ export const en = {
     mfaVerify: "Verify",
     mfaVerifying: "Verifying...",
     back: "Back",
+    errorMissingCredentials: "Please enter your student ID and password",
+    errorLoginFailed: "Login failed. Check your student ID, password, and captcha",
+    errorCaptchaRequired: "Please enter the captcha",
+    errorMfaCodeRequired: "Please enter the MFA code",
+    errorMfaRequestFailed: "Failed to request MFA code",
+    errorMfaVerifyFailed: "MFA verification failed",
+    mfaRequired: "MFA verification required",
+    loginSuccess: "Logged in",
   },
   dashboard: {
     currentWeek: "Week {week}",
@@ -481,6 +498,7 @@ export const en = {
     statusEnded: "Ended",
     cannotAnswer: "Cannot answer",
     dateRange: "{start} to {end}",
+    textPlaceholder: "Enter your answer",
     noTasks: "No pending tasks",
     batchSuccess: "Batch done: {success} success, {failed} failed",
     noActiveTasks: "No active tasks for auto-evaluation",

@@ -16,9 +16,11 @@ export const useMobileHeaderStore = create<MobileHeaderState>((set) => ({
 
 export function useMobileHeaderRight(node: ReactNode, deps: unknown[] = []) {
   const setRightSlot = useMobileHeaderStore((s) => s.setRightSlot);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setRightSlot(node);
     return () => setRightSlot(null);
+    // The `deps` array is intentionally forwarded from the caller — exhaustive-deps
+    // cannot reason about its contents.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }

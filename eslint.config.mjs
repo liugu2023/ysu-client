@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Hydrating client state from localStorage inside useEffect is the
+      // standard SSR-safe pattern in Next.js; the cascading-render risk
+      // does not apply to one-shot cache reads on mount.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

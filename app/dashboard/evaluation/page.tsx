@@ -174,8 +174,8 @@ export default function EvaluationPage() {
     if (!credential) return;
     async function load() {
       try {
-        const t = await getEvaluationTypes(credential!);
-        setTypes(t);
+        const fetched = await getEvaluationTypes(credential!);
+        setTypes(fetched);
       } catch (err) {
         toast.error((err as Error).message || t("app.updating"));
       } finally {
@@ -206,8 +206,8 @@ export default function EvaluationPage() {
     setSelectedType(code);
     setLoadingTasks(true);
     try {
-      const t = await getPendingEvaluations(credential, code);
-      setTasks(t);
+      const fetched = await getPendingEvaluations(credential, code);
+      setTasks(fetched);
     } catch (err) {
       toast.error((err as Error).message || t("app.updating"));
     } finally {
@@ -406,7 +406,7 @@ export default function EvaluationPage() {
 
   function selectAllTasks() {
     const activeTasks = tasks.filter((task) => getTaskStatus(task, t).active);
-    setSelectedTaskIds(new Set(activeTasks.map((t) => t.wid || "").filter(Boolean)));
+    setSelectedTaskIds(new Set(activeTasks.map((task) => task.wid || "").filter(Boolean)));
   }
 
   function deselectAllTasks() {
@@ -640,7 +640,7 @@ export default function EvaluationPage() {
           <CardHeader>
             <CardTitle>{t("evaluation.pendingTasks")}</CardTitle>
             <CardDescription>
-              {types.find((t) => t.code === selectedType)?.name}
+              {types.find((typ) => typ.code === selectedType)?.name}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -794,7 +794,7 @@ export default function EvaluationPage() {
                     )}
                     {q.question_type !== "01" && q.question_type !== "07" && (
                       <Textarea
-                        placeholder="请输入答案"
+                        placeholder={t("evaluation.textPlaceholder")}
                         value={answers[q.tmid]?.text || ""}
                         onChange={(e) =>
                           handleAnswerChange(q, {

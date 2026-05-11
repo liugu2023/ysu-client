@@ -13,33 +13,13 @@ import { getStudentInfo, getCurrentWeek, getGPAStats, getExperimentalSchedule, g
 import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
 import { useRefreshStore } from "@/lib/refresh-store";
 import { cn } from "@/lib/utils";
+import { isCourseActiveInWeek } from "@/app/dashboard/schedule/schedule-utils";
 import type { StudentInfo, CurrentWeek, GPAStats, Course, Exam } from "@/lib/types";
 import { Calendar, GraduationCap, BarChart3, Clock, BookOpen, Eye, EyeOff } from "lucide-react";
 
-function parseWeeks(weeksStr: string): number[] {
-  const result = new Set<number>();
-  if (!weeksStr) return [];
-  const cleaned = weeksStr.replace(/[周第\s]/g, "");
-  const parts = cleaned.split(/[,，]/);
-  for (const part of parts) {
-    if (part.includes("-")) {
-      const [start, end] = part.split("-").map((s) => parseInt(s, 10));
-      if (!isNaN(start) && !isNaN(end)) {
-        for (let w = start; w <= end; w++) result.add(w);
-      }
-    } else {
-      const n = parseInt(part, 10);
-      if (!isNaN(n)) result.add(n);
-    }
-  }
-  return Array.from(result).sort((a, b) => a - b);
-}
-
 function isCourseActiveToday(course: Course, currentWeek: number, currentWeekday: number): boolean {
   if (course.week_day !== currentWeekday) return false;
-  const weeks = parseWeeks(course.weeks || "");
-  if (weeks.length === 0) return true;
-  return weeks.includes(currentWeek);
+  return isCourseActiveInWeek(course, currentWeek);
 }
 
 const SECTION_TIME_MAP: Record<number, [number, number]> = {
@@ -65,6 +45,7 @@ export default function DashboardPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showGPA, setShowGPA] = useState(false);
 
   useEffect(() => {
     if (!credential) return;
@@ -157,7 +138,6 @@ export default function DashboardPage() {
   const currentCourse = getCurrentCourse();
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const [showGPA, setShowGPA] = useState(false);
 
   if (loading) {
     return (

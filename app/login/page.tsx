@@ -101,7 +101,7 @@ export default function LoginPage() {
   async function handleSubmitCredentials(e: React.FormEvent) {
     e.preventDefault();
     if (!username || !password) {
-      toast.error(t("login.usernamePlaceholder"));
+      toast.error(t("login.errorMissingCredentials"));
       return;
     }
     setLoading(true);
@@ -119,7 +119,7 @@ export default function LoginPage() {
         } else {
           clearRemembered();
         }
-        toast.success(t("login.submit"));
+        toast.success(t("login.loginSuccess"));
         router.replace("/dashboard");
         return;
       }
@@ -127,21 +127,21 @@ export default function LoginPage() {
       if (res.needs_mfa && res.credential) {
         setTempCredential(res.credential);
         setStep("mfa");
-        toast.info("MFA");
+        toast.info(t("login.mfaRequired"));
         return;
       }
 
-      toast.error(t("login.passwordLabel"));
+      toast.error(t("login.errorLoginFailed"));
     } catch (err) {
       const e = err as Error & { code?: string; status?: number };
       if (e.code === "NEED_CAPTCHA" || e.status === 403) {
-        toast.error(t("login.captchaLabel"));
+        toast.error(t("login.errorCaptchaRequired"));
         await handleCheckCaptcha();
       } else if (e.code === "MFA_REQUIRED") {
-        toast.info("MFA");
+        toast.info(t("login.mfaRequired"));
         setStep("mfa");
       } else {
-        toast.error(e.message || t("login.submit"));
+        toast.error(e.message || t("login.errorLoginFailed"));
       }
     } finally {
       setLoading(false);
@@ -160,7 +160,7 @@ export default function LoginPage() {
       setMethodCode(res.method_code);
       toast.success(`${t("login.mfaSent")} ${res.mobile_hint}`);
     } catch (err) {
-      toast.error((err as Error).message || t("login.mfaRequest"));
+      toast.error((err as Error).message || t("login.errorMfaRequestFailed"));
     } finally {
       setLoading(false);
     }
@@ -169,7 +169,7 @@ export default function LoginPage() {
   async function handleSubmitMFA(e: React.FormEvent) {
     e.preventDefault();
     if (!tempCredential || !mfaCode) {
-      toast.error(t("login.mfaCodePlaceholder"));
+      toast.error(t("login.errorMfaCodeRequired"));
       return;
     }
     setLoading(true);
@@ -189,10 +189,10 @@ export default function LoginPage() {
       } else {
         clearRemembered();
       }
-      toast.success(t("login.submit"));
+      toast.success(t("login.loginSuccess"));
       router.replace("/dashboard");
     } catch (err) {
-      toast.error((err as Error).message || t("login.mfaCodeLabel"));
+      toast.error((err as Error).message || t("login.errorMfaVerifyFailed"));
     } finally {
       setLoading(false);
     }

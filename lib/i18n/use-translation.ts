@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { useI18n } from "./context";
-import type { Dictionary } from "./dict";
 
 function getNestedValue(obj: Record<string, unknown>, path: string): string {
   const keys = path.split(".");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -90,7 +90,10 @@ export default function GradesPage() {
   const [statsError, setStatsError] = useState<string | null>(null);
   const [statsScope, setStatsScope] = useState<"class" | "course">("class");
 
-  const terms = Array.from(new Set(grades.map((g) => g.term).filter(Boolean))).sort();
+  const terms = useMemo(
+    () => Array.from(new Set(grades.map((g) => g.term).filter(Boolean))).sort(),
+    [grades],
+  );
 
   useEffect(() => {
     if (!credential) return;
@@ -117,8 +120,8 @@ export default function GradesPage() {
         setGpa(gp);
         cacheSet(cacheKey(["grades", credential!]), g);
         cacheSet(cacheKey(["gpa", credential!]), gp);
-        if (weekInfo?.term && terms.length === 0) {
-          setTerm(weekInfo.term);
+        if (weekInfo?.term) {
+          setTerm((prev) => (prev === ALL_TERM ? weekInfo.term! : prev));
         }
       } catch (err) {
         if (!cachedGrades) toast.error((err as Error).message || t("app.updating"));
@@ -601,7 +604,7 @@ export default function GradesPage() {
                                 </div>
                               </div>
                               <span className="w-12 shrink-0 text-right tabular-nums text-muted-foreground">
-                                {t("grades.stats.count").replace("{count}", String(d.count))}
+                                {t("grades.stats.count", { count: d.count })}
                               </span>
                             </div>
                           );
@@ -634,9 +637,10 @@ export default function GradesPage() {
                           {t("grades.stats.rank")}
                         </span>
                         <span className="text-base font-semibold tabular-nums">
-                          {t("grades.stats.rankFormat")
-                            .replace("{rank}", String(rankingResult.rank))
-                            .replace("{total}", String(rankingResult.total))}
+                          {t("grades.stats.rankFormat", {
+                            rank: rankingResult.rank,
+                            total: rankingResult.total,
+                          })}
                         </span>
                       </div>
                     </div>
