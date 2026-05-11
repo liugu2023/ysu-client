@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useI18n } from "./context";
 import type { Dictionary } from "./dict";
 
@@ -17,13 +18,16 @@ function getNestedValue(obj: Record<string, unknown>, path: string): string {
 export function useTranslation() {
   const { locale, dict, setLocale } = useI18n();
 
-  function t(key: string, params?: Record<string, string | number>): string {
-    const template = getNestedValue(dict as Record<string, unknown>, key);
-    if (!params) return template;
-    return template.replace(/\{(\w+)\}/g, (_, k) =>
-      params[k] !== undefined ? String(params[k]) : `{${k}}`
-    );
-  }
+  const t = useCallback(
+    (key: string, params?: Record<string, string | number>): string => {
+      const template = getNestedValue(dict as Record<string, unknown>, key);
+      if (!params) return template;
+      return template.replace(/\{(\w+)\}/g, (_, k) =>
+        params[k] !== undefined ? String(params[k]) : `{${k}}`
+      );
+    },
+    [dict]
+  );
 
   return { t, locale, setLocale };
 }
