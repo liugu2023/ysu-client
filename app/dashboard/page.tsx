@@ -11,7 +11,7 @@ import { useTranslation } from "@/lib/i18n/use-translation";
 import { getStudentInfo, getCurrentWeek, getGPAStats, getExperimentalSchedule, getExams } from "@/lib/api";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
 import type { StudentInfo, CurrentWeek, GPAStats, Course, Exam } from "@/lib/types";
-import { Calendar, GraduationCap, BarChart3, Clock, BookOpen, AlertCircle } from "lucide-react";
+import { Calendar, GraduationCap, BarChart3, Clock, BookOpen } from "lucide-react";
 
 function parseWeeks(weeksStr: string): number[] {
   const result = new Set<number>();
@@ -49,7 +49,6 @@ export default function DashboardPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (!credential) return;
@@ -68,7 +67,7 @@ export default function DashboardPage() {
 
     if (cachedStudent || cachedWeek || cachedGpa || cachedCourses || cachedExams) {
       setLoading(false);
-      setUpdating(true);
+      toast.info(t("app.updating"));
     }
 
     async function load() {
@@ -94,7 +93,6 @@ export default function DashboardPage() {
         if (!cachedStudent) toast.error((err as Error).message || t("app.updating"));
       } finally {
         setLoading(false);
-        setUpdating(false);
       }
     }
     load();
@@ -167,13 +165,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {updating && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <AlertCircle className="size-4" />
-          {t("app.updating")}
-        </div>
-      )}
-
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-2">

@@ -27,7 +27,7 @@ import { useTranslation } from "@/lib/i18n/use-translation";
 import { getGrades, getGPAStats } from "@/lib/api";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
 import type { Grade, GPAStats } from "@/lib/types";
-import { Search, AlertCircle } from "lucide-react";
+import { Search } from "lucide-react";
 
 export default function GradesPage() {
   const credential = useAuthStore((s) => s.credential);
@@ -35,7 +35,6 @@ export default function GradesPage() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [gpa, setGpa] = useState<GPAStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const ALL_TERM = "__all__";
   const [term, setTerm] = useState(ALL_TERM);
   const [courseName, setCourseName] = useState("");
@@ -51,7 +50,7 @@ export default function GradesPage() {
     if (cachedGpa) setGpa(cachedGpa);
     if (cachedGrades || cachedGpa) {
       setLoading(false);
-      setUpdating(true);
+      toast.info(t("app.updating"));
     }
 
     async function load() {
@@ -68,7 +67,6 @@ export default function GradesPage() {
         if (!cachedGrades) toast.error((err as Error).message || t("app.updating"));
       } finally {
         setLoading(false);
-        setUpdating(false);
       }
     }
     load();
@@ -107,13 +105,6 @@ export default function GradesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {updating && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <AlertCircle className="size-4" />
-          {t("app.updating")}
-        </div>
-      )}
-
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">{t("grades.gpaTitle")}</CardTitle>
