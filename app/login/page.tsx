@@ -29,8 +29,9 @@ import {
 import { useAuthStore } from "@/lib/auth-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import {
-  fetchCaptcha,
+  checkCaptchaNeeded,
   loginStep1,
+  prepareLogin,
   requestMFACode,
   submitMFACode,
 } from "@/lib/api";
@@ -67,7 +68,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [captcha, setCaptcha] = useState("");
-  const [captchaImage, setCaptchaImage] = useState<string | null>(null);
+  const [captchaUrl, setCaptchaUrl] = useState<string | null>(null);
   const [needsCaptcha, setNeedsCaptcha] = useState(false);
   const [tempCredential, setTempCredential] = useState<string | null>(null);
   const [mfaMethod, setMfaMethod] = useState<"sms" | "cpdaily">("cpdaily");
@@ -85,16 +86,20 @@ export default function LoginPage() {
     }
   }, []);
 
+  function showCaptcha() {
+    setNeedsCaptcha(true);
+    setCaptchaUrl(
+      `https://cer.ysu.edu.cn/authserver/getCaptcha.htl?${Date.now()}`,
+    );
+  }
+
   async function handleCheckCaptcha() {
     if (!username) return;
     try {
-      const res = await fetchCaptcha(username);
-      setNeedsCaptcha(res.needed);
-      if (res.needed && res.image_base64) {
-        setCaptchaImage(`data:image/png;base64,${res.image_base64}`);
-      }
+      await prepareLogin();
+      if (await checkCaptchaNeeded(username)) showCaptcha();
     } catch {
-      setNeedsCaptcha(false);
+      // ignore
     }
   }
 
@@ -136,7 +141,10 @@ export default function LoginPage() {
       const e = err as Error & { code?: string; status?: number };
       if (e.code === "NEED_CAPTCHA" || e.status === 403) {
         toast.error(t("login.errorCaptchaRequired"));
-        await handleCheckCaptcha();
+        if (!needsCaptcha) {
+          // First time: show captcha UI. Don't refresh if already visible.
+          showCaptcha();
+        }
       } else if (e.code === "MFA_REQUIRED") {
         toast.info(t("login.mfaRequired"));
         setStep("mfa");
@@ -235,15 +243,19 @@ export default function LoginPage() {
                     autoComplete="current-password"
                   />
                 </Field>
-                {needsCaptcha && captchaImage && (
+                {needsCaptcha && captchaUrl && (
                   <Field>
                     <FieldLabel htmlFor="captcha">{t("login.captchaLabel")}</FieldLabel>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={captchaImage}
+                      src={captchaUrl}
                       alt="captcha"
                       className="rounded-md border cursor-pointer transition-opacity hover:opacity-80"
-                      onClick={handleCheckCaptcha}
+                      onClick={() =>
+                        setCaptchaUrl(
+                          `https://cer.ysu.edu.cn/authserver/getCaptcha.htl?${Date.now()}`,
+                        )
+                      }
                     />
                     <Input
                       id="captcha"

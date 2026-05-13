@@ -18,6 +18,7 @@ import {
   ChevronRight,
   FileText,
   GraduationCap,
+  LogIn,
   LogOut,
   Monitor,
   Moon,
@@ -28,6 +29,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { getStudentInfo } from "@/lib/api";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
+import { resetSDK } from "@/lib/sdk";
 import type { StudentInfo } from "@/lib/types";
 
 export default function MePage() {
@@ -62,7 +64,30 @@ export default function MePage() {
 
   function handleLogout() {
     clearCredential();
+    resetSDK();
     toast.success(t("app.logout"));
+    router.replace("/login");
+  }
+
+  async function handleRelogin() {
+    try {
+      const raw = localStorage.getItem("ysu-login-remember");
+      const remembered = raw ? (JSON.parse(raw) as { username?: string; password?: string }) : null;
+      if (remembered?.username && remembered?.password) {
+        const { tryAutoLogin } = await import("@/lib/auto-login");
+        const success = await tryAutoLogin();
+        if (success) {
+          toast.success(t("login.loginSuccess"));
+          return;
+        }
+        toast.error(t("autoLogin.failed"));
+        return;
+      }
+    } catch {
+      // fall through
+    }
+    clearCredential();
+    resetSDK();
     router.replace("/login");
   }
 
@@ -175,7 +200,15 @@ export default function MePage() {
 
       <Section title={t("me.sectionAccount")}>
         <Card>
-          <CardContent className="py-2">
+          <CardContent className="flex flex-col py-1">
+            <Button
+              variant="ghost"
+              onClick={handleRelogin}
+              className="w-full justify-start"
+            >
+              <LogIn data-icon="inline-start" />
+              {t("app.relogin")}
+            </Button>
             <Button
               variant="ghost"
               onClick={handleLogout}

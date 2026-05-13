@@ -165,7 +165,7 @@ function domainMatches(cookieDomain: string, host: string): boolean {
 }
 
 function pathMatches(cookiePath: string, requestPath: string): boolean {
-  if (!cookiePath) return true;
+  if (!cookiePath || cookiePath === '/') return true;
   return requestPath === cookiePath || requestPath.startsWith(cookiePath + '/');
 }
 
@@ -213,8 +213,15 @@ export class SimpleCookieJar {
       return true;
     });
 
+    // Deduplicate by name: longest path wins (most specific match).
     matched.sort((a, b) => b.path.length - a.path.length);
-    return matched.map((c) => `${c.name}=${c.value}`).join('; ');
+    const seen = new Set<string>();
+    const deduped = matched.filter((c) => {
+      if (seen.has(c.name)) return false;
+      seen.add(c.name);
+      return true;
+    });
+    return deduped.map((c) => `${c.name}=${c.value}`).join('; ');
   }
 
   async getAllCookies(): Promise<readonly CookieEntry[]> {
@@ -268,6 +275,8 @@ export interface HttpRequest {
   readonly body?: string | URLSearchParams;
   readonly redirect: 'manual' | 'follow';
   readonly timeoutMs?: number;
+  /** Passed to CapacitorHttp as responseType (e.g. 'base64' for binary data). */
+  readonly responseType?: string;
 }
 
 export interface HttpResponse {
@@ -305,9 +314,7 @@ function isCapacitor(): boolean {
 }
 
 async function send(jar: SimpleCookieJar, req: HttpRequest): Promise<HttpResponse> {
-  // CapacitorHttp fetch interceptor breaks on GET with redirect:manual.
-  // Use direct CapacitorHttp API for GET; POST continues via fetch (works fine).
-  if (req.method === 'GET' && isCapacitor()) {
+  if (isCapacitor()) {
     return capacitorHttpSend(jar, req);
   }
 
@@ -351,8 +358,25 @@ async function capacitorHttpSend(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const capCore = (await import('@capacitor/core')) as any;
   const CapacitorHttp = capCore?.CapacitorHttp;
+  const CapacitorCookies = capCore?.CapacitorCookies;
   if (!CapacitorHttp?.request) {
     throw new Error('CapacitorHttp not available');
+  }
+
+  // Push jar cookies → native store so HttpURLConnection sends them.
+  // setCookie() overwrites existing cookies by name, so stale entries are replaced.
+  const jarCookies = await jar.getAllCookies();
+  for (const c of jarCookies) {
+    if (!c.value) continue;
+    try {
+      const host = c.domain.replace(/^\./, '') || 'localhost';
+      await CapacitorCookies?.setCookie?.({
+        url: `https://${host}${c.path}`,
+        key: c.name,
+        value: c.value,
+        path: c.path,
+      });
+    } catch { /* ignore individual failures */ }
   }
 
   const headers: Record<string, string> = { ...(req.headers ?? {}) };
@@ -362,33 +386,92 @@ async function capacitorHttpSend(
   if (!headers['Accept-Language']) {
     headers['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8';
   }
-  const cookieHeader = await jar.getCookieString(req.url);
-  if (cookieHeader) {
-    headers['Cookie'] = cookieHeader;
-  }
 
-  const response = await CapacitorHttp.request({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const options: Record<string, any> = {
     method: req.method,
     url: req.url,
     headers,
     connectTimeout: req.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     readTimeout: req.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-  });
+    disableRedirects: true,
+    responseType: req.responseType ?? 'text',
+  };
 
-  const setCookieRaw = response.headers?.['set-cookie'];
+  if (req.body !== undefined) {
+    options.data = req.body instanceof URLSearchParams ? req.body.toString() : req.body;
+  }
+
+  const response = await CapacitorHttp.request(options);
+
+  // CapacitorHttp preserves original header casing from the server.
+  // Normalize all keys to lowercase so consumers can access uniformly.
+  const rawHeaders: Record<string, string> = response.headers ?? {};
+  const normalizedHeaders: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rawHeaders)) {
+    normalizedHeaders[k.toLowerCase()] = v;
+  }
+
+  const setCookieRaw = normalizedHeaders['set-cookie'];
   if (setCookieRaw) {
-    const cookies = Array.isArray(setCookieRaw) ? setCookieRaw : splitSetCookie(setCookieRaw);
+    const cookies = Array.isArray(setCookieRaw)
+      ? setCookieRaw
+      : splitSetCookie(setCookieRaw);
     for (const sc of cookies) {
       await jar.setCookie(sc, req.url, { ignoreError: true });
     }
   }
 
+  // Read back cookies from the native CookieManager.
+  // When HttpURLConnection auto-follows redirects, it captures Set-Cookie headers
+  // (e.g. GS_SESSIONID from JWXT) in its native store. These are NOT exposed in
+  // the response headers JS sees. Sync them back into our jar.
+  try {
+    const nativeCookies: Record<string, string> = await CapacitorCookies?.getCookies?.();
+    if (nativeCookies && typeof nativeCookies === 'object') {
+      const jarAll = await jar.getAllCookies();
+      const jarNames = new Set(jarAll.filter((c) => c.value).map((c) => c.name));
+      for (const [name, value] of Object.entries(nativeCookies)) {
+        if (!value || jarNames.has(name)) continue;
+        // Cookie exists in native store but not in our jar — add it.
+        // We lack domain/path info; set with request URL's domain as hint.
+        const parsedUrl = safeParseUrl(req.url);
+        const domain = parsedUrl?.hostname ?? '';
+        const path = parsedUrl?.pathname ?? '/';
+        await jar.setCookie(
+          `${name}=${value}; Domain=${domain}; Path=${path}`,
+          req.url,
+          { ignoreError: true },
+        );
+      }
+    }
+  } catch {
+    // Not on Capacitor or getCookies not available
+  }
+
+  const isBase64 = req.responseType === 'base64';
+
   return {
     status: response.status,
-    headers: response.headers ?? {},
+    headers: normalizedHeaders,
     url: response.url || req.url,
-    text: async () => String(response.data ?? ''),
+    text: async () => {
+      const d = response.data;
+      if (d === null || d === undefined) return '';
+      if (typeof d === 'string') return d;
+      // CapacitorHttp auto-parses JSON responses into objects even with
+      // responseType:'text'. Re-serialize so callers can JSON.parse the text.
+      if (typeof d === 'object') return JSON.stringify(d);
+      return String(d);
+    },
     arrayBuffer: async () => {
+      if (isBase64) {
+        // response.data is a base64 string — decode to binary
+        const binary = atob(String(response.data ?? ''));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+      }
       const encoder = new TextEncoder();
       return encoder.encode(String(response.data ?? '')).buffer;
     },
@@ -440,23 +523,27 @@ async function followRedirects(
 
 function splitSetCookie(raw: string): string[] {
   if (!raw) return [];
-  const parts = raw.split(',');
   const out: string[] = [];
-  let current = '';
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    if (current) {
-      current += ', ' + trimmed;
-    } else {
-      current = trimmed;
+  let current = raw;
+  while (current.length > 0) {
+    let splitIdx = -1;
+    for (let i = 0; i < current.length; i++) {
+      if (current[i] === ',') {
+        const after = current.slice(i + 1).trim();
+        // 新的 cookie 以 name=value 开头
+        if (/^[a-zA-Z0-9_-]+=/.test(after)) {
+          splitIdx = i;
+          break;
+        }
+      }
     }
-    if (trimmed.includes('=') || trimmed.toLowerCase().includes('path=')) {
-      out.push(current);
-      current = '';
+    if (splitIdx === -1) {
+      out.push(current.trim());
+      break;
     }
+    out.push(current.slice(0, splitIdx).trim());
+    current = current.slice(splitIdx + 1).trim();
   }
-  if (current) out.push(current);
   return out;
 }
 

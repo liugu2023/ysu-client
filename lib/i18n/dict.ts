@@ -14,6 +14,7 @@ export const zh = {
     me: "我的",
     login: "登录",
     logout: "退出登录",
+    relogin: "重新登录",
     theme: "切换主题",
     themeLight: "浅色",
     themeDark: "深色",
@@ -21,6 +22,7 @@ export const zh = {
     language: "语言",
     updating: "正在更新数据...",
     sessionExpired: "会话已过期，请重新登录",
+    networkError: "网络连接失败，请检查网络",
     staleDataTooltip: "当前显示缓存数据，刷新失败",
   },
   me: {
@@ -46,6 +48,7 @@ export const zh = {
     mfaMethodSms: "短信",
     mfaRequest: "获取验证码",
     mfaRequesting: "发送中...",
+    mfaResend: "已发送 ({seconds}s)",
     mfaSent: "验证码将发送至",
     mfaCodeLabel: "验证码",
     mfaCodePlaceholder: "请输入验证码",
@@ -60,6 +63,11 @@ export const zh = {
     errorMfaVerifyFailed: "MFA 验证失败",
     mfaRequired: "需要 MFA 验证",
     loginSuccess: "登录成功",
+  },
+  autoLogin: {
+    failed: "自动登录失败，请重新登录",
+    mfaDescription: "请输入验证码完成登录",
+    captchaRequired: "需要验证码，无法自动登录",
   },
   dashboard: {
     currentWeek: "第 {week} 周",
@@ -353,6 +361,7 @@ export const en = {
     me: "Me",
     login: "Login",
     logout: "Logout",
+    relogin: "Re-login",
     theme: "Theme",
     themeLight: "Light",
     themeDark: "Dark",
@@ -360,6 +369,7 @@ export const en = {
     language: "Language",
     updating: "Updating data...",
     sessionExpired: "Session expired, please log in again",
+    networkError: "Network connection failed, please check your network",
     staleDataTooltip: "Showing cached data, refresh failed",
   },
   me: {
@@ -385,6 +395,7 @@ export const en = {
     mfaMethodSms: "SMS",
     mfaRequest: "Request Code",
     mfaRequesting: "Sending...",
+    mfaResend: "Sent ({seconds}s)",
     mfaSent: "Code sent to",
     mfaCodeLabel: "Code",
     mfaCodePlaceholder: "Enter verification code",
@@ -399,6 +410,11 @@ export const en = {
     errorMfaVerifyFailed: "MFA verification failed",
     mfaRequired: "MFA verification required",
     loginSuccess: "Logged in",
+  },
+  autoLogin: {
+    failed: "Auto-login failed, please log in again",
+    mfaDescription: "Enter the verification code to complete login",
+    captchaRequired: "Captcha required, cannot auto-login",
   },
   dashboard: {
     currentWeek: "Week {week}",

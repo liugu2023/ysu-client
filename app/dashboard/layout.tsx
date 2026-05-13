@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { getStudentInfo } from "@/lib/api";
+import { resetSDK } from "@/lib/sdk";
 import type { StudentInfo } from "@/lib/types";
 import {
   BookOpen,
@@ -45,6 +46,7 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
+  LogIn,
   LogOut,
   Moon,
   Sun,
@@ -81,9 +83,7 @@ export default function DashboardLayout({
       .catch((err) => {
         const e = err as Error & { code?: string; status?: number };
         if (e.code === "AUTH_REQUIRED" || e.status === 401) {
-          clearCredential();
           toast.error(t("app.sessionExpired"));
-          router.replace("/login");
         }
       })
       .finally(() => setLoadingStudent(false));
@@ -119,7 +119,30 @@ export default function DashboardLayout({
 
   function handleLogout() {
     clearCredential();
+    resetSDK();
     toast.success(t("app.logout"));
+    router.replace("/login");
+  }
+
+  async function handleRelogin() {
+    try {
+      const raw = localStorage.getItem("ysu-login-remember");
+      const remembered = raw ? (JSON.parse(raw) as { username?: string; password?: string }) : null;
+      if (remembered?.username && remembered?.password) {
+        const { tryAutoLogin } = await import("@/lib/auto-login");
+        const success = await tryAutoLogin();
+        if (success) {
+          toast.success(t("login.loginSuccess"));
+          return;
+        }
+        toast.error(t("autoLogin.failed"));
+        return;
+      }
+    } catch {
+      // fall through
+    }
+    clearCredential();
+    resetSDK();
     router.replace("/login");
   }
 
@@ -222,6 +245,10 @@ export default function DashboardLayout({
                 <DropdownMenuItem onClick={() => setStudentDialogOpen(true)}>
                   <User />
                   {t("app.studentInfo")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleRelogin}>
+                  <LogIn />
+                  {t("app.relogin")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut />

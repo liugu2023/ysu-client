@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
 import { I18nProvider } from "@/lib/i18n/context"
 import { SDKProvider } from "@/components/sdk-provider"
+import { MFAModal } from "@/components/mfa-modal"
 import { cn } from "@/lib/utils";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' })
@@ -52,6 +53,7 @@ export default function RootLayout({
               <TooltipProvider>
                 {children}
                 <Toaster />
+                <MFAModal />
               </TooltipProvider>
             </ThemeProvider>
           </SDKProvider>

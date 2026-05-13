@@ -6,7 +6,6 @@
  */
 import type {
   CalculateScoreRequest,
-  CaptchaResponse,
   Course,
   CurrentWeek,
   EvaluationDetail,
@@ -35,18 +34,20 @@ import type {
   ClassPeriod,
 } from "./types";
 import { useAuthStore } from "./auth-store";
-import { resetSDK } from "./sdk";
+import { resetSDK, persistJWXTSession } from "./sdk";
 import {
-  fetchCaptcha as _fetchCaptcha,
+  checkCaptchaNeeded as _checkCaptchaNeeded,
   loginStep1 as _loginStep1,
   requestMFACode as _requestMFACode,
   submitMFACode as _submitMFACode,
   isAuthenticated as _isAuthenticated,
+  prepareLogin as _prepareLogin,
   CASCredential,
   getJar as getCasJar,
 } from "./cas";
 import {
   CASError,
+  NeedCaptchaError,
   NotAuthenticatedError,
 } from "./cas";
 import {
@@ -77,10 +78,6 @@ import {
   submitEvaluation as _submitEvaluation,
 } from "./jwxt";
 
-// 冷启动单飞:多个并发 JWXT 请求同时触发时,只让第一个做 authorize,
-// 其它等待完成后复用同一份 cookie jar,避免各自打一次 CAS 网关。
-let inflightBootstrap: Promise<void> | null = null;
-
 function apiError(message: string, code?: string, status?: number): Error {
   const err = new Error(message);
   (err as Error & { code?: string; status?: number }).code = code;
@@ -99,6 +96,9 @@ function mapSdkError(e: unknown): Error {
       400,
     );
   }
+  if (e instanceof NeedCaptchaError) {
+    return apiError(e.message, "NEED_CAPTCHA", 403);
+  }
   if (e instanceof CASError) {
     return apiError(e.message, "CAS_ERROR", 500);
   }
@@ -108,27 +108,17 @@ function mapSdkError(e: unknown): Error {
   return apiError(String(e), "UNKNOWN_ERROR", 500);
 }
 
-/** Uint8Array → base64(前端无 Buffer,用 btoa 的 TypedArray 版)。 */
-function uint8ToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  return btoa(binary);
-}
-
 // ── Auth ────────────────────────────────────────────────
 
-export async function fetchCaptcha(username: string): Promise<CaptchaResponse> {
+export async function prepareLogin(): Promise<void> {
+  return _prepareLogin();
+}
+
+export async function checkCaptchaNeeded(username: string): Promise<boolean> {
   try {
-    const challenge = await _fetchCaptcha(username);
-    if (!challenge) return { needed: false };
-    return {
-      needed: true,
-      image_base64: uint8ToBase64(challenge.imagePng),
-    };
-  } catch (e) {
-    throw mapSdkError(e);
+    return await _checkCaptchaNeeded(username);
+  } catch {
+    return false;
   }
 }
 
@@ -229,13 +219,13 @@ export async function checkAuthStatus(_credential?: string): Promise<StatusRespo
 
 // ── JWXT helper ─────────────────────────────────────────
 
-/** 带并发锁的 JWXT 调用 wrapper。 */
+/** JWXT 调用 wrapper:错误映射 + 成功后持久化会话。 */
 async function withJWXT<T>(fn: () => Promise<T>): Promise<T> {
-  if (inflightBootstrap) {
-    await inflightBootstrap;
-  }
   try {
-    return await fn();
+    const result = await fn();
+    // 异步持久化 JWXT 会话,不阻塞返回
+    void persistJWXTSession();
+    return result;
   } catch (e) {
     throw mapSdkError(e);
   }

@@ -525,7 +525,7 @@ async function emapPost(
   if (resp.status === 401 || resp.status === 403) {
     throw new NotLoggedInError(`HTTP ${resp.status} from ${url}`);
   }
-  if (resp.status < 200 || resp.status >= 300) {
+  if (resp.status >= 400) {
     throw new JWXTProtocolError(`HTTP ${resp.status} from ${url}`);
   }
 

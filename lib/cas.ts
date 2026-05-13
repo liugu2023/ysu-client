@@ -20,7 +20,6 @@ const CER_BASE_URL = 'https://cer.ysu.edu.cn';
 const AUTH_LOGIN_URL = `${CER_BASE_URL}/authserver/login`;
 const AUTH_INDEX_URL = `${CER_BASE_URL}/authserver/index.do`;
 const CHECK_CAPTCHA_URL = `${CER_BASE_URL}/authserver/checkNeedCaptcha.htl`;
-const GET_CAPTCHA_URL = `${CER_BASE_URL}/authserver/getCaptcha.htl`;
 const REAUTH_TYPE_URL = `${CER_BASE_URL}/authserver/reAuthCheck/changeReAuthType.do`;
 const REAUTH_SEND_CODE_URL = `${CER_BASE_URL}/authserver/dynamicCode/getDynamicCodeByReauth.do`;
 const REAUTH_SUBMIT_URL = `${CER_BASE_URL}/authserver/reAuthCheck/reAuthSubmit.do`;
@@ -35,16 +34,11 @@ const MFA_METHOD_TO_AUTH_CODE_TYPE: Readonly<Record<string, string>> = {
   cpdaily: 'reAuthCpdailyDynamicCodeType',
 };
 const CAS_COOKIE_DOMAIN = 'cer.ysu.edu.cn';
-const TICKET_RE = /ticket=(ST-[^&\s]+)/;
 const REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 
 // ─── Types ────────────────────────────────────────────────────────────── //
 
 export type MFAMethod = 'sms' | 'cpdaily';
-
-export interface CaptchaChallenge {
-  readonly imagePng: Uint8Array;
-}
 
 export interface MFAChallenge {
   readonly method: MFAMethod;
@@ -128,7 +122,8 @@ function isCasPath(p: string): boolean {
 }
 
 function isCasCookie(e: CookieEntry): boolean {
-  return e.domain === CAS_COOKIE_DOMAIN && isCasPath(e.path);
+  const domain = e.domain.startsWith('.') ? e.domain.slice(1) : e.domain;
+  return domain === CAS_COOKIE_DOMAIN && isCasPath(e.path);
 }
 
 export class CASCredential {
@@ -306,6 +301,8 @@ export function extractErrorMessage(html: string): string | null {
 
 // ─── Module state ─────────────────────────────────────────────────────── //
 
+const CASTGC_STORAGE_KEY = 'ysu-castgc';
+
 let casJar = new SimpleCookieJar();
 let timeoutMs = 30_000;
 let credentialApplied: Promise<void> = Promise.resolve();
@@ -336,6 +333,45 @@ export function getCredentialApplied(): Promise<void> {
   return credentialApplied;
 }
 
+/**
+ * Save CASTGC from jar to localStorage for cross-restart persistence.
+ */
+export async function saveCASTGC(): Promise<void> {
+  const allCookies = await casJar.getAllCookies();
+  for (const c of allCookies) {
+    if (c.name === 'CASTGC' && c.value) {
+      localStorage.setItem(CASTGC_STORAGE_KEY, c.value);
+      return;
+    }
+  }
+}
+
+/**
+ * Restore CASTGC from localStorage into the CapacitorHttp system cookie store.
+ * Must be called on startup before any CAS requests.
+ */
+export async function restoreCASCookies(): Promise<void> {
+  const tgc = localStorage.getItem(CASTGC_STORAGE_KEY);
+  if (!tgc) return;
+
+  try {
+    const capCore = (await import('@capacitor/core')) as Record<string, unknown>;
+    const CapacitorCookies = capCore['CapacitorCookies'] as {
+      setCookie?: (opts: { url: string; key: string; value: string; path?: string }) => Promise<void>;
+    } | undefined;
+    if (CapacitorCookies?.setCookie) {
+      await CapacitorCookies.setCookie({
+        url: CER_BASE_URL,
+        key: 'CASTGC',
+        value: tgc,
+        path: '/authserver',
+      });
+    }
+  } catch {
+    // Not on Capacitor — ignore
+  }
+}
+
 // ─── Internal fetch wrapper ───────────────────────────────────────────── //
 
 async function _fetch(req: Parameters<typeof fetchWithJar>[1]): Promise<HttpResponse> {
@@ -345,35 +381,61 @@ async function _fetch(req: Parameters<typeof fetchWithJar>[1]): Promise<HttpResp
 
 // ─── Public API ───────────────────────────────────────────────────────── //
 
-export async function isAuthenticated(): Promise<boolean> {
+/** 访问登录页以建立 CAS session (获取 JSESSIONID cookie)。 */
+export async function prepareLogin(): Promise<void> {
+  await getLoginPage();
+  // Sync JSESSIONID from jar → WebView cookie store so that
+  // <img src="getCaptcha.htl"> uses the same session as the login POST.
+  await syncJarCookiesToWebView();
+}
+
+async function syncJarCookiesToWebView(): Promise<void> {
   try {
-    const resp = await _fetch({
-      method: 'GET',
-      url: AUTH_INDEX_URL,
-      redirect: 'manual',
-      timeoutMs,
-    });
-    if (REDIRECT_STATUSES.has(resp.status)) {
-      const location = headerSingle(resp.headers, 'location') ?? '';
-      return !location.includes('/authserver/login');
+    const capCore = (await import('@capacitor/core')) as Record<string, unknown>;
+    const CapacitorCookies = capCore['CapacitorCookies'] as {
+      setCookie?: (opts: { url: string; key: string; value: string; path?: string }) => Promise<void>;
+    } | undefined;
+    if (!CapacitorCookies?.setCookie) return;
+    const cookies = await casJar.getAllCookies();
+    for (const c of cookies) {
+      if (!c.value) continue;
+      await CapacitorCookies.setCookie({
+        url: `https://${c.domain.replace(/^\./, '')}${c.path}`,
+        key: c.name,
+        value: c.value,
+        path: c.path,
+      });
     }
-    if (resp.status === 200) {
-      // CapacitorHttp auto-follows redirects — check final URL
-      return !resp.url.includes('/authserver/login');
-    }
-    return false;
   } catch {
-    return false;
+    // Not on Capacitor — ignore
   }
+}
+
+export async function isAuthenticated(): Promise<boolean> {
+  const resp = await _fetch({
+    method: 'GET',
+    url: AUTH_INDEX_URL,
+    redirect: 'manual',
+    timeoutMs,
+  });
+  if (REDIRECT_STATUSES.has(resp.status)) {
+    const location = headerSingle(resp.headers, 'location') ?? '';
+    return !location.includes('/authserver/login');
+  }
+  if (resp.status === 200) {
+    // CapacitorHttp auto-follows redirects — check final URL
+    return !resp.url.includes('/authserver/login');
+  }
+  return false;
 }
 
 export async function credential(): Promise<CASCredential> {
   return CASCredential.fromJar(casJar);
 }
 
-export async function fetchCaptcha(username: string): Promise<CaptchaChallenge | null> {
+/** 检查指定用户是否需要验证码。不获取图片——图片由 `<img>` 直接加载。 */
+export async function checkCaptchaNeeded(username: string): Promise<boolean> {
   const checkUrl = `${CHECK_CAPTCHA_URL}?username=${encodeURIComponent(username)}`;
-  let isNeed = false;
   try {
     const resp = await _fetch({
       method: 'GET',
@@ -382,24 +444,10 @@ export async function fetchCaptcha(username: string): Promise<CaptchaChallenge |
       timeoutMs: Math.min(timeoutMs, 10_000),
     });
     const data = JSON.parse(await resp.text()) as Record<string, unknown>;
-    isNeed = Boolean(data['isNeed']);
+    return Boolean(data['isNeed']);
   } catch {
-    return null;
+    return false;
   }
-  if (!isNeed) return null;
-
-  const imgUrl = `${GET_CAPTCHA_URL}?_=${Date.now()}`;
-  const imgResp = await _fetch({
-    method: 'GET',
-    url: imgUrl,
-    redirect: 'manual',
-    timeoutMs: Math.min(timeoutMs, 10_000),
-  });
-  if (imgResp.status !== 200) {
-    throw new CASProtocolError(`captcha endpoint returned status ${imgResp.status}`);
-  }
-  const bytes = new Uint8Array(await imgResp.arrayBuffer());
-  return { imagePng: bytes };
 }
 
 export async function loginStep1(
@@ -407,7 +455,13 @@ export async function loginStep1(
   password: string,
   options: { readonly captcha?: string } = {},
 ): Promise<Step1Result> {
-  const html = await getLoginPage();
+  const { html, finalUrl } = await getLoginPage();
+
+  // If we landed on the service page (not the login page), already authenticated.
+  if (!finalUrl.includes('/authserver/login')) {
+    return { authenticated: true, needsMfa: false, username };
+  }
+
   const fields = extractHiddenFields(html, { cllt: 'userNameLogin' });
   const execution = fields['execution'];
   const salt = fields['pwdEncryptSalt'];
@@ -419,6 +473,7 @@ export async function loginStep1(
   }
 
   const encrypted = await encryptPassword(password, salt);
+
   const body = new URLSearchParams({
     username,
     password: encrypted,
@@ -444,7 +499,12 @@ export async function loginStep1(
     redirect: 'manual',
     timeoutMs,
   });
-  return classifyStep1Response(resp, username);
+  const result = await classifyStep1Response(resp, username);
+  if (result.authenticated) {
+    loginPageCache = null;
+    await saveCASTGC();
+  }
+  return result;
 }
 
 export async function requestMFACode(
@@ -562,10 +622,12 @@ export async function submitMFACode(
         timeoutMs,
       });
       if (!follow.url.includes('/authserver/login')) {
+        await saveCASTGC();
         return credential();
       }
     } catch {
       if (location.includes('ticket=') && !location.includes('/authserver/login')) {
+        await saveCASTGC();
         return credential();
       }
     }
@@ -595,6 +657,7 @@ export async function submitMFACode(
   }
 
   if (await isAuthenticated()) {
+    await saveCASTGC();
     return credential();
   }
 
@@ -628,48 +691,62 @@ export async function authorize(
   }
 
   await (await CASCredential.fromJar(target)).apply(casJar);
+  await saveCASTGC();
+
   return target;
-}
-
-export async function getServiceTicket(serviceUrl: string): Promise<string> {
-  const encoded = encodeURIComponent(serviceUrl);
-  const url = `${AUTH_LOGIN_URL}?service=${encoded}`;
-  const resp = await _fetch({
-    method: 'GET',
-    url,
-    redirect: 'manual',
-    timeoutMs,
-  });
-
-  if (!REDIRECT_STATUSES.has(resp.status)) {
-    throw new CASProtocolError(`expected redirect from CAS, got status ${resp.status}`);
-  }
-  const location = headerSingle(resp.headers, 'location') ?? '';
-  if (location.includes('/authserver/login')) {
-    throw new NotAuthenticatedError('CAS redirected back to login page; TGC missing or expired');
-  }
-  const m = TICKET_RE.exec(location);
-  if (!m || !m[1]) {
-    throw new CASProtocolError(`no ST ticket in Location header: ${JSON.stringify(location)}`);
-  }
-  return m[1];
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────── //
 
-async function getLoginPage(): Promise<string> {
+let loginPageCache: { html: string; finalUrl: string; ts: number } | null = null;
+const LOGIN_PAGE_CACHE_TTL = 300_000;
+
+async function getLoginPage(): Promise<{ html: string; finalUrl: string }> {
+  if (loginPageCache && Date.now() - loginPageCache.ts < LOGIN_PAGE_CACHE_TTL) {
+    return loginPageCache;
+  }
+  loginPageCache = null;
   const url = `${AUTH_LOGIN_URL}?service=${encodeURIComponent(DEFAULT_LOGIN_SERVICE)}`;
-  const resp = await _fetch({
+
+  // Follow redirects so we land on the actual destination.
+  // If TGC is valid, CAS 302s to the service page (already authenticated).
+  // If TGC is stale, CAS 302s to login with a fresh session cookie.
+  let resp = await _fetch({
     method: 'GET',
     url,
-    redirect: 'manual',
+    redirect: 'follow',
     timeoutMs,
   });
-  const body = await resp.text();
-  if (resp.status !== 200) {
-    throw new CASProtocolError(`login page returned status ${resp.status}`);
+
+  if (resp.url.includes('/authserver/login')) {
+    // TGC was stale — CAS bounced us back to login.
+    // Clear the stale TGC and retry to get a clean login page.
+    const staleTgc = await collectCookies(casJar, (e) => e.name === 'CASTGC');
+    for (const c of staleTgc) {
+      await casJar.removeCookie(c.domain, c.path, c.name);
+    }
+    resp = await _fetch({
+      method: 'GET',
+      url,
+      redirect: 'follow',
+      timeoutMs,
+    });
+    if (resp.url.includes('/authserver/login')) {
+      const body = await resp.text();
+      if (resp.status !== 200) {
+        throw new CASProtocolError(`login page returned status ${resp.status}`);
+      }
+      const result = { html: body, finalUrl: resp.url };
+      loginPageCache = { ...result, ts: Date.now() };
+      return result;
+    }
   }
-  return body;
+
+  // Either already authenticated (landed on service page) or
+  // a non-login destination. Return as-is.
+  const result = { html: await resp.text(), finalUrl: resp.url };
+  loginPageCache = { ...result, ts: Date.now() };
+  return result;
 }
 
 async function classifyStep1Response(
@@ -715,10 +792,28 @@ async function classifyStep1Response(
     if (follow.url.includes(DEFAULT_LOGIN_SERVICE) || follow.url.includes('ticket=')) {
       return { authenticated: true, needsMfa: false, username };
     }
+
     const followText = await follow.text();
+
     if (isReauthPage(followText)) {
       return { authenticated: false, needsMfa: true, username };
     }
+
+    // Redirect back to login page — authentication failed.
+    if (follow.url.includes('/authserver/login')) {
+      if (isIpFrozen(followText)) {
+        throw new IPBlockedError('IP 被认证网关冻结,请稍后再试或联系管理员');
+      }
+      const error = extractErrorMessage(followText);
+      if (error) {
+        if (error.includes('验证码') || error.toLowerCase().includes('captcha')) {
+          throw new NeedCaptchaError(error);
+        }
+        throw new LoginFailedError(error);
+      }
+      throw new LoginFailedError('登录失败(服务器未返回具体错误信息)');
+    }
+
     throw new CASProtocolError(
       `unrecognized redirect chain after first-factor: ${follow.url}`,
     );
@@ -744,5 +839,20 @@ async function classifyStep1Response(
     );
   }
 
-  throw new CASProtocolError(`unexpected status code from CAS: ${resp.status}`);
+  // Unexpected status codes (e.g. 401, 403, 500) — read body for diagnostics.
+  const body = await resp.text();
+  if (isIpFrozen(body)) {
+    throw new IPBlockedError('IP 被认证网关冻结,请稍后再试或联系管理员');
+  }
+  const error = extractErrorMessage(body);
+  if (error) {
+    if (error.includes('验证码') || error.toLowerCase().includes('captcha')) {
+      throw new NeedCaptchaError(error);
+    }
+    throw new LoginFailedError(error);
+  }
+  throw new CASProtocolError(
+    `unexpected status code from CAS: ${resp.status}` +
+      (body ? ` — body snippet: ${body.slice(0, 300)}` : ''),
+  );
 }
