@@ -40,4 +40,4 @@ next-env.d.ts
 
 # Claude Code
 CLAUDE.md
-capacitor_*_apidoc.md
+capacitor_*_*doc.md

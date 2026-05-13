@@ -29,6 +29,11 @@ import {
 import { useAuthStore } from "@/lib/auth-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import {
+  loadRememberedCredentials,
+  saveRememberedCredentials,
+  clearRememberedCredentials,
+} from "@/lib/secure-storage";
+import {
   checkCaptchaNeeded,
   loginStep1,
   prepareLogin,
@@ -37,26 +42,6 @@ import {
 } from "@/lib/api";
 
 type Step = "credentials" | "mfa";
-
-const REMEMBER_KEY = "ysu-login-remember";
-
-function loadRemembered(): { username: string; password: string } | null {
-  try {
-    const raw = localStorage.getItem(REMEMBER_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function saveRemembered(username: string, password: string) {
-  localStorage.setItem(REMEMBER_KEY, JSON.stringify({ username, password }));
-}
-
-function clearRemembered() {
-  localStorage.removeItem(REMEMBER_KEY);
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -78,12 +63,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const r = loadRemembered();
-    if (r) {
-      setUsername(r.username);
-      setPassword(r.password);
-      setRemember(true);
-    }
+    loadRememberedCredentials().then((r) => {
+      if (r) {
+        setUsername(r.username);
+        setPassword(r.password);
+        setRemember(true);
+      }
+    });
   }, []);
 
   function showCaptcha() {
@@ -120,9 +106,9 @@ export default function LoginPage() {
       if (res.authenticated && res.credential) {
         setCredential(res.credential, username);
         if (remember) {
-          saveRemembered(username, password);
+          saveRememberedCredentials(username, password);
         } else {
-          clearRemembered();
+          clearRememberedCredentials();
         }
         toast.success(t("login.loginSuccess"));
         router.replace("/dashboard");
@@ -193,9 +179,9 @@ export default function LoginPage() {
       );
       setCredential(res.credential, username);
       if (remember) {
-        saveRemembered(username, password);
+        saveRememberedCredentials(username, password);
       } else {
-        clearRemembered();
+        clearRememberedCredentials();
       }
       toast.success(t("login.loginSuccess"));
       router.replace("/dashboard");

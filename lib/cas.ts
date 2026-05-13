@@ -13,6 +13,10 @@ import {
   headerSingle,
   type HttpResponse,
 } from './cookie';
+import {
+  saveCASTGC as saveCASTGCSecure,
+  loadCASTGC,
+} from './secure-storage';
 
 // ─── Constants ────────────────────────────────────────────────────────── //
 
@@ -301,8 +305,6 @@ export function extractErrorMessage(html: string): string | null {
 
 // ─── Module state ─────────────────────────────────────────────────────── //
 
-const CASTGC_STORAGE_KEY = 'ysu-castgc';
-
 let casJar = new SimpleCookieJar();
 let timeoutMs = 30_000;
 let credentialApplied: Promise<void> = Promise.resolve();
@@ -334,24 +336,24 @@ export function getCredentialApplied(): Promise<void> {
 }
 
 /**
- * Save CASTGC from jar to localStorage for cross-restart persistence.
+ * Save CASTGC from jar to secure storage for cross-restart persistence.
  */
 export async function saveCASTGC(): Promise<void> {
   const allCookies = await casJar.getAllCookies();
   for (const c of allCookies) {
     if (c.name === 'CASTGC' && c.value) {
-      localStorage.setItem(CASTGC_STORAGE_KEY, c.value);
+      await saveCASTGCSecure(c.value);
       return;
     }
   }
 }
 
 /**
- * Restore CASTGC from localStorage into the CapacitorHttp system cookie store.
+ * Restore CASTGC from secure storage into the CapacitorHttp system cookie store.
  * Must be called on startup before any CAS requests.
  */
 export async function restoreCASCookies(): Promise<void> {
-  const tgc = localStorage.getItem(CASTGC_STORAGE_KEY);
+  const tgc = await loadCASTGC();
   if (!tgc) return;
 
   try {

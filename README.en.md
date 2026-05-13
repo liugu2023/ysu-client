@@ -27,7 +27,7 @@ updates.
 
 - **CAS Authentication.** Login with automatic handling of CAPTCHA and
   SMS / cpdaily MFA. Session persisted across app restarts (CASTGC
-  stored in localStorage, restored to native cookie store on Android).
+  stored encrypted via SecureStorage, restored to native cookie store on Android).
 - **Dashboard.** Current teaching week, today's classes (with active and
   past periods highlighted), upcoming exams, and a GPA snapshot.
 - **Grades.** Filter by term / course name. Drill into a single course
@@ -135,7 +135,7 @@ hooks/
 └── use-mobile.ts           # responsive breakpoint
 lib/
 ├── api.ts                  # academic-system API client
-├── auth-store.ts           # auth zustand store (persisted to localStorage)
+├── auth-store.ts           # auth zustand store (persisted to SecureStorage)
 ├── auto-login.ts           # auto-login logic
 ├── cache.ts                # 24h TTL local cache
 ├── cas.ts                  # CAS SSO: login, CAPTCHA, MFA, TGC persistence
@@ -146,6 +146,7 @@ lib/
 ├── platform.ts             # platform detection (web vs native)
 ├── refresh-store.ts        # global refresh state
 ├── sdk.ts                  # SDK init / persist / reset
+├── secure-storage.ts       # SecureStorage wrapper (Android Keystore / iOS Keychain)
 ├── settings-store.ts       # user settings
 ├── types.ts                # TypeScript type definitions
 ├── updater.ts              # Capacitor OTA updater logic
@@ -170,8 +171,8 @@ cookie store via `CapacitorCookies.setCookie()`.
 ### Authentication (`lib/cas.ts`)
 
 Full CAS SSO flow with CAPTCHA and MFA support. The CASTGC token is
-persisted to localStorage and restored to the native cookie store on
-startup so sessions survive app restarts.
+stored encrypted via SecureStorage and restored to the native cookie
+store on startup so sessions survive app restarts.
 
 ### Session persistence (`lib/sdk.ts`)
 
@@ -183,11 +184,11 @@ calls to avoid unnecessary re-authorization.
 
 - **Credential protection.** `credential` is equivalent to an active CAS
   session cookie; whoever holds it can impersonate the student. This
-  client persists it to `localStorage`, so do **not** enable "remember
-  password" on shared devices.
-- **Remember password.** When enabled, the plaintext username and
-  password are written to the `localStorage` key `ysu-login-remember`
-  for auto-fill. If you need stronger guarantees, leave it unchecked.
+  client stores credentials encrypted via `@aparajita/capacitor-secure-storage`
+  (Android Keystore / iOS Keychain). Do **not** enable "remember password"
+  on shared devices.
+- **Remember password.** When enabled, the username and password are
+  stored encrypted via the system secure storage for auto-fill.
 
 ## Compatibility
 

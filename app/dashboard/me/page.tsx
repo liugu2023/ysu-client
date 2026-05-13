@@ -82,16 +82,10 @@ export default function MePage() {
 
   async function handleRelogin() {
     try {
-      const raw = localStorage.getItem("ysu-login-remember");
-      const remembered = raw ? (JSON.parse(raw) as { username?: string; password?: string }) : null;
-      if (remembered?.username && remembered?.password) {
-        const { tryAutoLogin } = await import("@/lib/auto-login");
-        const success = await tryAutoLogin();
-        if (success) {
-          toast.success(t("login.loginSuccess"));
-          return;
-        }
-        toast.error(t("autoLogin.failed"));
+      const { tryAutoLogin } = await import("@/lib/auto-login");
+      const success = await tryAutoLogin();
+      if (success) {
+        toast.success(t("login.loginSuccess"));
         return;
       }
     } catch {

@@ -14,25 +14,14 @@ import { initSDK } from "./sdk";
 import { useAuthStore } from "./auth-store";
 import { useMFAModalStore } from "./mfa-modal-store";
 import { getText } from "./i18n/get-text";
-
-const REMEMBER_KEY = "ysu-login-remember";
-
-function loadRemembered(): { username: string; password: string } | null {
-  try {
-    const raw = localStorage.getItem(REMEMBER_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
+import { loadRememberedCredentials } from "./secure-storage";
 
 let inflightAutoLogin: Promise<boolean> | null = null;
 
 export async function tryAutoLogin(): Promise<boolean> {
   if (inflightAutoLogin) return inflightAutoLogin;
 
-  const remembered = loadRemembered();
+  const remembered = await loadRememberedCredentials();
   if (!remembered) return false;
 
   inflightAutoLogin = (async () => {

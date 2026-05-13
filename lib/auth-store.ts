@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { secureStorage } from "./secure-storage";
 
 interface AuthState {
   credential: string | null;
@@ -35,7 +36,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "ysu-auth",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => secureStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },
