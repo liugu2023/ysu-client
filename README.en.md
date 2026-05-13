@@ -5,16 +5,18 @@
 <h1 align="center">ysu-client</h1>
 
 <p align="center">
-  <a href="README.en.md">English</a> | <a href="README.md">中文</a>
+  <a href="README.md">首页</a> | <a href="README.zh-CN.md">中文详细文档</a>
 </p>
 
 > **YSU Terminal** — a third-party Android client for Yanshan University's
 > online academic systems.
 
-Built on Next.js 16 + React 19 + shadcn/ui, backed by
-[`ysu-api`](../ysu-api). Covers CAS login, academic-system queries, and
-one-click course evaluation. Packaged as an Android WebView app via
-Capacitor with native HTTP bridging and OTA updates.
+Built on Next.js 16 + React 19 + shadcn/ui, with business logic
+referencing [ysu-sdk](https://github.com/Youwenqwq/ysu-sdk) and
+[ysu-api](https://github.com/Youwenqwq/ysu-api). Covers CAS login,
+academic-system queries, and one-click course evaluation. Packaged as
+an Android WebView app via Capacitor with native HTTP bridging and OTA
+updates.
 
 > **Third-party client, not affiliated with Yanshan University.**
 > For personal study and reference only. Using it implies acceptance of
@@ -87,12 +89,6 @@ npm run lint         # ESLint
 npm run format       # Prettier
 ```
 
-### Environment variables
-
-| Variable | Default | Notes |
-| --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE` | `http://localhost:11920` | Base URL of the [`ysu-api`](../ysu-api) backend. |
-
 ### Android build
 
 ```bash
@@ -105,19 +101,6 @@ In Android Studio: **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
 
 OTA updates are pushed via `npm run release` which builds, creates a
 GitHub release with the version tag, and uploads the artifact.
-
-## Contract with the backend
-
-ysu-client assumes the backend is [`ysu-api`](../ysu-api). All wire
-details live in `lib/api.ts`:
-
-- Credentials are sent via the `X-CAS-Credential` header and persisted
-  in the browser under the `localStorage` key `ysu-auth` (zustand
-  `persist`).
-- 24-hour data cache lives under `localStorage` keys `ysu-cache:*` —
-  see `lib/cache.ts`.
-- Error model: branch on the response `code` (e.g. `NEED_CAPTCHA`,
-  `MFA_REQUIRED`) and surface `detail` to the user directly.
 
 ## Directory layout
 
@@ -151,7 +134,7 @@ components/
 hooks/
 └── use-mobile.ts           # responsive breakpoint
 lib/
-├── api.ts                  # ysu-api fetch client (withJWXT wrapper)
+├── api.ts                  # academic-system API client
 ├── auth-store.ts           # auth zustand store (persisted to localStorage)
 ├── auto-login.ts           # auto-login logic
 ├── cache.ts                # 24h TTL local cache
@@ -164,7 +147,7 @@ lib/
 ├── refresh-store.ts        # global refresh state
 ├── sdk.ts                  # SDK init / persist / reset
 ├── settings-store.ts       # user settings
-├── types.ts                # TypeScript contracts with the backend
+├── types.ts                # TypeScript type definitions
 ├── updater.ts              # Capacitor OTA updater logic
 ├── utils.ts                # general utilities (cn, etc.)
 ├── version.ts              # version display logic
@@ -205,11 +188,6 @@ calls to avoid unnecessary re-authorization.
 - **Remember password.** When enabled, the plaintext username and
   password are written to the `localStorage` key `ysu-login-remember`
   for auto-fill. If you need stronger guarantees, leave it unchecked.
-- **Backend trust.** Whatever service `NEXT_PUBLIC_API_BASE` points at
-  receives every credential. Only point it at a `ysu-api` instance you
-  control, ideally over HTTPS.
-- **CORS.** When the browser talks to the backend directly, allow-list
-  the current origin via `YSU_API_CORS_ORIGINS` on the `ysu-api` side.
 
 ## Compatibility
 
@@ -220,8 +198,7 @@ Play Store.
 
 ## License & disclaimer
 
-The source code in this repository is released under the MIT License by
-default (if the repo does not ship a separate `LICENSE` file, this
-section is authoritative). The repository and its authors take **no
+The source code in this repository is released under the
+[GPL-3.0 License](LICENSE). The repository and its authors take **no
 responsibility** for any account, data, disciplinary, or legal
 consequences arising from using this client.
