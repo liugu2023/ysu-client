@@ -36,7 +36,11 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
         if (isCapacitor()) {
           import("@/lib/updater").then(({ checkForUpdate }) => {
             checkForUpdate(true).then((info) => {
-              if (info.available) {
+              if (info.apkUpdateAvailable) {
+                toast.info(
+                  t("update.apkAvailable").replace("{version}", info.version),
+                );
+              } else if (info.available) {
                 toast.info(
                   t("update.available").replace("{version}", info.version),
                 );

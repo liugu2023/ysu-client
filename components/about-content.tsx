@@ -57,6 +57,7 @@ type UpdateState =
   | "downloading"
   | "downloaded"
   | "up-to-date"
+  | "apk-available"
   | "error";
 
 export function AboutContent() {
@@ -106,8 +107,10 @@ export function AboutContent() {
     try {
       const { checkForUpdate } = await import("@/lib/updater");
       const info = await checkForUpdate(false, updateMirror);
-      if (info.available) {
-        setUpdateInfo(info);
+      setUpdateInfo(info);
+      if (info.apkUpdateAvailable) {
+        setState("apk-available");
+      } else if (info.available) {
         setState("available");
       } else {
         setState("up-to-date");
@@ -157,6 +160,13 @@ export function AboutContent() {
       // ignore
     }
   }, []);
+
+  const handleApkDownload = useCallback(() => {
+    if (!updateInfo?.apkDownloadUrl) return;
+    import("@/lib/updater").then(({ openApkDownload }) => {
+      openApkDownload(updateInfo.apkDownloadUrl);
+    });
+  }, [updateInfo]);
 
   const canCheck = isCapacitor();
 
@@ -208,6 +218,7 @@ export function AboutContent() {
               onReset={handleReset}
               onOpenMirror={openMirrorDialog}
               onLongPress={openMirrorDialog}
+              onApkDownload={handleApkDownload}
               t={t}
             />
           ) : (
@@ -390,6 +401,7 @@ function UpdateSection({
   onReset,
   onOpenMirror,
   onLongPress,
+  onApkDownload,
   t,
 }: {
   state: UpdateState;
@@ -403,6 +415,7 @@ function UpdateSection({
   onReset: () => void;
   onOpenMirror: () => void;
   onLongPress: () => void;
+  onApkDownload: () => void;
   t: (key: string) => string;
 }) {
   const longPressHandlers = useLongPress(onLongPress);
@@ -448,6 +461,22 @@ function UpdateSection({
           <Button size="sm" onClick={onDownload} className="ml-8">
             <Download className="size-4" />
             {t("update.download")}
+          </Button>
+        </div>
+      );
+
+    case "apk-available":
+      return (
+        <div className="flex flex-col gap-2 py-3">
+          <div className="flex items-center gap-3">
+            <CircleFadingArrowUp className="size-5 shrink-0 text-primary" />
+            <span className="flex-1 text-left text-sm font-medium text-primary">
+              {t("update.apkAvailable").replace("{version}", updateInfo?.version ?? "")}
+            </span>
+          </div>
+          <Button size="sm" onClick={onApkDownload} className="ml-8">
+            <Download className="size-4" />
+            {t("update.apkDownload")}
           </Button>
         </div>
       );

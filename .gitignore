@@ -41,3 +41,8 @@ next-env.d.ts
 # Claude Code
 CLAUDE.md
 capacitor_*_*doc.md
+
+# Android
+*.keystore
+*.jks
+gradle.properties

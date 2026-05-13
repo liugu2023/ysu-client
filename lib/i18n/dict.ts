@@ -73,6 +73,9 @@ export const zh = {
     cancel: "取消",
     confirm: "确定",
     resetToFactory: "恢复内置版本",
+    apkAvailable: "发现新版本 v{version}，需下载安装",
+    apkDownload: "下载安装包",
+    apkDownloading: "正在跳转下载...",
   },
   login: {
     title: "燕大终端",
@@ -467,6 +470,9 @@ export const en = {
     cancel: "Cancel",
     confirm: "Confirm",
     resetToFactory: "Reset to Built-in",
+    apkAvailable: "New version v{version} available, download required",
+    apkDownload: "Download APK",
+    apkDownloading: "Redirecting to download...",
   },
   login: {
     title: "YSU Terminal",

@@ -1,4 +1,5 @@
 import { CapacitorUpdater } from "@capgo/capacitor-updater";
+import { App } from "@capacitor/app";
 import { APP_VERSION } from "./version";
 
 export interface UpdateInfo {
@@ -6,6 +7,8 @@ export interface UpdateInfo {
   version: string;
   downloadUrl: string;
   body: string;
+  apkUpdateAvailable: boolean;
+  apkDownloadUrl: string;
 }
 
 export interface UpdateMirror {
@@ -22,6 +25,7 @@ export const UPDATE_MIRRORS: readonly UpdateMirror[] = [
 const GITHUB_API =
   "https://api.github.com/repos/Youwenqwq/ysu-client/releases/latest";
 const ASSET_NAME = "dist.zip";
+const VERSION_JSON_NAME = "version.json";
 const LAST_CHECK_KEY = "ysu-last-update-check";
 const CHECK_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -36,6 +40,15 @@ export function isNewer(current: string, target: string): boolean {
   return false;
 }
 
+const EMPTY_RESULT: UpdateInfo = {
+  available: false,
+  version: "",
+  downloadUrl: "",
+  body: "",
+  apkUpdateAvailable: false,
+  apkDownloadUrl: "",
+};
+
 /** Check GitHub Releases for a newer version. Respects 30-min cooldown when `auto` is true. */
 export async function checkForUpdate(
   auto = false,
@@ -44,7 +57,7 @@ export async function checkForUpdate(
   if (auto) {
     const last = localStorage.getItem(LAST_CHECK_KEY);
     if (last && Date.now() - Number(last) < CHECK_COOLDOWN_MS) {
-      return { available: false, version: "", downloadUrl: "", body: "" };
+      return EMPTY_RESULT;
     }
   }
 
@@ -71,7 +84,7 @@ export async function checkForUpdate(
     const asset = assets.find((a) => a.name === ASSET_NAME);
 
     if (!asset || !version) {
-      return { available: false, version: "", downloadUrl: "", body: "" };
+      return EMPTY_RESULT;
     }
 
     localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
@@ -80,14 +93,45 @@ export async function checkForUpdate(
       ? `${mirrorPrefix}${asset.browser_download_url}`
       : asset.browser_download_url;
 
-    return {
+    const result: UpdateInfo = {
       available: isNewer(APP_VERSION, version),
       version,
       downloadUrl,
       body,
+      apkUpdateAvailable: false,
+      apkDownloadUrl: "",
     };
+
+    // Check version.json for APK version info
+    const vjAsset = assets.find((a) => a.name === VERSION_JSON_NAME);
+    if (vjAsset) {
+      const vjUrl = mirrorPrefix
+        ? `${mirrorPrefix}${vjAsset.browser_download_url}`
+        : vjAsset.browser_download_url;
+      try {
+        const vjRes = await fetch(vjUrl);
+        if (vjRes.ok) {
+          const vj = await vjRes.json();
+          const installed = await App.getInfo();
+          if (vj.apkVersionCode > Number(installed.build)) {
+            result.apkUpdateAvailable = true;
+            result.apkDownloadUrl = mirrorPrefix
+              ? `${mirrorPrefix}${vj.apkDownloadUrl}`
+              : vj.apkDownloadUrl;
+            // If APK needs update, web update is moot — force APK-only flow
+            if (result.apkUpdateAvailable && result.available) {
+              result.available = false;
+            }
+          }
+        }
+      } catch {
+        // version.json fetch failed — proceed with web-only check
+      }
+    }
+
+    return result;
   } catch (err) {
-    if (auto) return { available: false, version: "", downloadUrl: "", body: "" };
+    if (auto) return EMPTY_RESULT;
     throw err;
   }
 }
@@ -120,4 +164,9 @@ export async function applyAndRestart(): Promise<void> {
 /** Reset to the original bundled assets (emergency rollback). */
 export async function resetToBuiltin(): Promise<void> {
   await CapacitorUpdater.reset();
+}
+
+/** Open APK download URL in browser for system download & install. */
+export function openApkDownload(url: string): void {
+  window.open(url, "_system");
 }
