@@ -25,28 +25,28 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
+    // Fire-and-forget: check for updates independently (Capacitor only)
+    if (isCapacitor()) {
+      import("@/lib/updater").then(({ checkForUpdate }) => {
+        checkForUpdate(true).then((info) => {
+          if (info.apkUpdateAvailable) {
+            toast.info(
+              t("update.apkAvailable").replace("{version}", info.version),
+            );
+          } else if (info.available) {
+            toast.info(
+              t("update.available").replace("{version}", info.version),
+            );
+          }
+        }).catch(() => {});
+      });
+    }
+
     initSDK()
       .then(() => checkAuthStatus())
       .then((status) => {
         if (!status.authenticated) {
           toast.error(t("app.sessionExpired"));
-        }
-
-        // Fire-and-forget: check for updates in background (Capacitor only)
-        if (isCapacitor()) {
-          import("@/lib/updater").then(({ checkForUpdate }) => {
-            checkForUpdate(true).then((info) => {
-              if (info.apkUpdateAvailable) {
-                toast.info(
-                  t("update.apkAvailable").replace("{version}", info.version),
-                );
-              } else if (info.available) {
-                toast.info(
-                  t("update.available").replace("{version}", info.version),
-                );
-              }
-            }).catch(() => {});
-          });
         }
       })
       .catch((err) => {
