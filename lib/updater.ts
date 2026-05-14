@@ -95,7 +95,9 @@ export async function checkForUpdate(
       return EMPTY_RESULT;
     }
 
-    localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+    if (auto) {
+      localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+    }
 
     const result: UpdateInfo = {
       available: isNewer(APP_VERSION, version),
