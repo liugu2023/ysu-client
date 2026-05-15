@@ -62,6 +62,11 @@ export interface Course {
   weeks?: string;
   credit?: string;
   course_type?: string;
+  class_id?: string;
+  syxzdm?: string;
+  schedule_id?: string;
+  class_type?: string;
+  raw?: Record<string, unknown>;
 }
 
 export interface ClassPeriod {
@@ -300,4 +305,50 @@ export interface SubmitEvaluationRequest {
 export interface ApiError {
   detail: string;
   code?: string;
+}
+
+export interface LessonActivity {
+  activity_id: string;
+  type: number | null;
+  status: number | null;
+  title: string | null;
+  icon: string | null;
+  sign_type: string | null;
+  sign_clazz: string | null;
+  is_end: boolean;
+  is_creator: boolean;
+  create_time: string | null;
+  raw?: Record<string, unknown>;
+}
+
+export interface CurrentLesson {
+  lesson_id: string | null;
+  activity_list: LessonActivity[];
+  raw?: Record<string, unknown>;
+}
+
+export interface SigninActivityDetail {
+  activity_id: string;
+  duration: number;
+  end_time: string;
+  left_seconds: number;
+  signin_type: number;
+  start_time: string;
+  raw?: Record<string, unknown>;
+}
+
+export interface StudentSigninStatus {
+  sign_status: number;
+  attendance_status: number;
+  sign_order: number;
+  signin_type: number;
+  raw?: Record<string, unknown>;
+}
+
+export interface StudentSignResult {
+  sign_status: number;
+  attendance_status: number;
+  sign_order: number;
+  signin_type: number;
+  raw?: Record<string, unknown>;
 }

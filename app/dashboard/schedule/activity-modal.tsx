@@ -1,0 +1,237 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import {
+  ResponsiveModal,
+  ResponsiveModalBody,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from "@/components/responsive-modal";
+import { useTranslation } from "@/lib/i18n/use-translation";
+import { useAuthStore } from "@/lib/auth-store";
+import { getCurrentLesson } from "@/lib/api";
+import type { Course, CurrentLesson, LessonActivity } from "@/lib/types";
+import { Signpost, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface Props {
+  course: Course | null;
+  week: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSigninActivity?: (activityId: string, signinType: number) => void;
+}
+
+function SigninStatusBadge({ isEnd }: { isEnd: boolean }) {
+  const { t } = useTranslation();
+  if (!isEnd) {
+    return (
+      <Badge variant="default" className="text-[10px]">
+        {t("activity.statusActive")}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="text-[10px]">
+      {t("activity.statusEnded")}
+    </Badge>
+  );
+}
+
+function formatDateTime(iso: string | null): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return iso;
+  }
+}
+
+export function ActivityModal({ course, week, open, onOpenChange, onSigninActivity }: Props) {
+  const { t } = useTranslation();
+  const credential = useAuthStore((s) => s.credential);
+  const [loading, setLoading] = useState(false);
+  const [lesson, setLesson] = useState<CurrentLesson | null>(null);
+
+  useEffect(() => {
+    if (!open || !course || !credential) {
+      setLesson(null);
+      return;
+    }
+
+    const c = course;
+    async function load() {
+      const classType = c.class_type || "1";
+      const teachClassId = classType === "1" ? c.class_id : c.syxzdm;
+      if (!teachClassId || !c?.schedule_id) {
+        toast.error(t("activity.errorNoCourseInfo"));
+        return;
+      }
+      setLoading(true);
+      try {
+        const result = await getCurrentLesson(credential!, {
+          teach_class_id: teachClassId,
+          teach_class_type: classType,
+          schedule_id: c.schedule_id,
+          week,
+          week_day: c.week_day,
+          start_node: c.start_section,
+          end_node: c.end_section,
+        });
+        setLesson(result);
+      } catch (err) {
+        toast.error((err as Error).message || t("activity.loadFailed"));
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [open, course, week, credential, t]);
+
+  const signinActivities = lesson?.activity_list.filter((a) => a.sign_clazz === "1") ?? [];
+  const signoutActivities = lesson?.activity_list.filter((a) => a.sign_clazz === "2") ?? [];
+
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="sm:max-w-md">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{course?.name || t("activity.title")}</ResponsiveModalTitle>
+          <ResponsiveModalDescription>
+            {course
+              ? [
+                  course.teacher,
+                  course.classroom,
+                  course.weeks || null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : ""}
+          </ResponsiveModalDescription>
+          {course && (
+            <div className="flex flex-wrap items-center justify-center gap-1 pt-1">
+              {course.course_type && (
+                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                  {course.course_type}
+                </Badge>
+              )}
+              {course.credit && (
+                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                  {t("schedule.credit")} {course.credit}
+                </Badge>
+              )}
+              {course.code && (
+                <Badge variant="outline" className="text-[10px] font-mono h-5 px-1.5">
+                  {course.code}
+                </Badge>
+              )}
+            </div>
+          )}
+        </ResponsiveModalHeader>
+        <ResponsiveModalBody>
+          {loading && (
+            <div className="flex flex-col gap-3">
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+            </div>
+          )}
+
+          {!loading && lesson === null && (
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+              <Signpost className="size-8 opacity-40" />
+              <span>{t("activity.noData")}</span>
+            </div>
+          )}
+
+          {!loading && lesson !== null && (
+            <div className="flex flex-col gap-4">
+              {signinActivities.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <h4 className="text-sm font-semibold">{t("activity.signinSection")}</h4>
+                  {signinActivities.map((activity) => (
+                    <ActivityItem
+                      key={activity.activity_id}
+                      activity={activity}
+                      onSignin={onSigninActivity}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {signoutActivities.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {signinActivities.length > 0 && <Separator />}
+                  <h4 className="text-sm font-semibold">{t("activity.signoutSection")}</h4>
+                  {signoutActivities.map((activity) => (
+                    <ActivityItem
+                      key={activity.activity_id}
+                      activity={activity}
+                      onSignin={onSigninActivity}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {lesson.activity_list.length === 0 && (
+                <div className="flex flex-col items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                  <Signpost className="size-8 opacity-40" />
+                  <span>{t("activity.noActivities")}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </ResponsiveModalBody>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
+  );
+}
+
+function ActivityItem({
+  activity,
+  onSignin,
+}: {
+  activity: LessonActivity;
+  onSignin?: (activityId: string, signinType: number) => void;
+}) {
+  const { t } = useTranslation();
+  const isSignin = activity.sign_clazz === "1";
+  const label = isSignin ? t("activity.signinItem") : t("activity.signoutItem");
+  const canJoin = !activity.is_end;
+
+  return (
+    <button
+      type="button"
+      disabled={!canJoin}
+      onClick={() => canJoin && onSignin?.(activity.activity_id, Number(activity.sign_type) || 1)}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-lg border p-3 text-left",
+        canJoin
+          ? "bg-card cursor-pointer transition-colors hover:bg-accent/50 active:bg-accent"
+          : "bg-muted/30 opacity-70 cursor-default",
+      )}
+    >
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <Signpost className="size-4" />
+      </div>
+      <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+        <span className="text-sm font-medium truncate">{label}</span>
+        {activity.create_time && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="size-3" />
+            {formatDateTime(activity.create_time)}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <SigninStatusBadge isEnd={activity.is_end} />
+      </div>
+    </button>
+  );
+}

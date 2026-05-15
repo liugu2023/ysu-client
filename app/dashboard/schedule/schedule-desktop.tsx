@@ -15,16 +15,24 @@ import { CalendarOff } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import type { Course, ClassPeriod } from "@/lib/types";
 import { computeMergedBlocks, type ScheduleBlock } from "./schedule-utils";
+import { ActivityModal } from "./activity-modal";
+import { SigninModal } from "./signin-modal";
 
 interface Props {
   courses: Course[];
   periods: ClassPeriod[];
   currentWeekday: number;
+  selectedWeek: number;
 }
 
-export function ScheduleDesktop({ courses, periods, currentWeekday }: Props) {
+export function ScheduleDesktop({ courses, periods, currentWeekday, selectedWeek }: Props) {
   const { t } = useTranslation();
   const [overlapDialog, setOverlapDialog] = useState<{ day: number; section: number; courses: Course[] } | null>(null);
+  const [activityCourse, setActivityCourse] = useState<Course | null>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [signinActivityId, setSigninActivityId] = useState<string | null>(null);
+  const [signinType, setSigninType] = useState(1);
+  const [signinOpen, setSigninOpen] = useState(false);
 
   const WEEKDAYS = [
     "",
@@ -107,12 +115,18 @@ export function ScheduleDesktop({ courses, periods, currentWeekday }: Props) {
               style={blockStyle(block)}
             >
               {block.courses.length === 1 ? (
-                <div className="h-full rounded-md bg-primary/10 p-2 flex flex-col justify-center gap-0.5 overflow-hidden">
+                <button
+                  className="h-full w-full rounded-md bg-primary/10 p-2 flex flex-col justify-center gap-0.5 overflow-hidden text-left hover:bg-primary/15 transition-colors"
+                  onClick={() => {
+                    setActivityCourse(block.courses[0]);
+                    setActivityOpen(true);
+                  }}
+                >
                   <div className="font-medium text-xs truncate">{block.courses[0].name}</div>
                   <div className="text-xs text-muted-foreground truncate">{block.courses[0].teacher}</div>
                   <div className="text-xs text-muted-foreground truncate">{block.courses[0].classroom}</div>
                   <div className="text-xs text-muted-foreground">{block.courses[0].weeks}</div>
-                </div>
+                </button>
               ) : (
                 <button
                   className="h-full w-full rounded-md bg-accent p-2 flex flex-col items-center justify-center gap-1 hover:bg-accent/80"
@@ -147,7 +161,15 @@ export function ScheduleDesktop({ courses, periods, currentWeekday }: Props) {
           </DialogHeader>
           <div className="flex flex-col gap-3">
             {overlapDialog?.courses.map((c, i) => (
-              <Card key={i}>
+              <Card
+                key={i}
+                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => {
+                  setOverlapDialog(null);
+                  setActivityCourse(c);
+                  setActivityOpen(true);
+                }}
+              >
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">{c.name}</CardTitle>
                   <CardDescription>
@@ -162,6 +184,25 @@ export function ScheduleDesktop({ courses, periods, currentWeekday }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ActivityModal
+        course={activityCourse}
+        week={selectedWeek}
+        open={activityOpen}
+        onOpenChange={setActivityOpen}
+        onSigninActivity={(id, type) => {
+          setSigninActivityId(id);
+          setSigninType(type);
+          setSigninOpen(true);
+        }}
+      />
+
+      <SigninModal
+        activityId={signinActivityId}
+        signinType={signinType}
+        open={signinOpen}
+        onOpenChange={setSigninOpen}
+      />
     </>
   );
 }

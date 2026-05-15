@@ -32,6 +32,11 @@ import type {
   AcademicWarning,
   TrainingPlan,
   ClassPeriod,
+  LessonActivity,
+  CurrentLesson,
+  SigninActivityDetail,
+  StudentSigninStatus,
+  StudentSignResult,
 } from "./types";
 import { useAuthStore } from "./auth-store";
 import { resetSDK, persistJWXTSession } from "./sdk";
@@ -76,6 +81,10 @@ import {
   getEvaluationDetail as _getEvaluationDetail,
   calculateEvaluationScore as _calculateEvaluationScore,
   submitEvaluation as _submitEvaluation,
+  queryCurrentLesson as _queryCurrentLesson,
+  querySigninDetail as _querySigninDetail,
+  queryStudentSigninStatus as _queryStudentSigninStatus,
+  studentSign as _studentSign,
 } from "./jwxt";
 
 function apiError(message: string, code?: string, status?: number): Error {
@@ -456,6 +465,11 @@ function mapCourse(r: {
   weeks?: string;
   credit?: string;
   courseType?: string;
+  classId?: string;
+  syxzdm?: string;
+  scheduleId?: string;
+  classType?: string;
+  raw?: Record<string, unknown>;
 }): Course {
   return {
     name: r.name ?? "",
@@ -468,6 +482,11 @@ function mapCourse(r: {
     weeks: r.weeks,
     credit: r.credit,
     course_type: r.courseType,
+    class_id: r.classId,
+    syxzdm: r.syxzdm,
+    schedule_id: r.scheduleId,
+    class_type: r.classType,
+    raw: r.raw,
   };
 }
 
@@ -714,5 +733,123 @@ export async function submitEvaluation(
       },
     );
     return { detail: "ok" };
+  });
+}
+
+// ── Lesson / Activity ────────────────────────────────────
+
+export async function getCurrentLesson(
+  _credential: string,
+  params: {
+    teach_class_id: string;
+    teach_class_type: string;
+    schedule_id: string;
+    week: number;
+    week_day: number;
+    start_node: number;
+    end_node: number;
+  },
+): Promise<CurrentLesson> {
+  return withJWXT(async () => {
+    const result = await _queryCurrentLesson({
+      teachClassId: params.teach_class_id,
+      teachClassType: params.teach_class_type,
+      scheduleId: params.schedule_id,
+      week: params.week,
+      weekDay: params.week_day,
+      startNode: params.start_node,
+      endNode: params.end_node,
+    });
+    return {
+      lesson_id: result.lessonId,
+      activity_list: result.activityList.map((a) => ({
+        activity_id: a.activityId,
+        type: a.type,
+        status: a.status,
+        title: a.title,
+        icon: a.icon,
+        sign_type: a.signType,
+        sign_clazz: a.signClazz,
+        is_end: a.isEnd,
+        is_creator: a.isCreator,
+        create_time: a.createTime,
+        raw: a.raw,
+      })),
+      raw: result.raw,
+    };
+  });
+}
+
+export async function getSigninDetail(
+  _credential: string,
+  params: {
+    activity_id: string;
+    title?: string;
+  },
+): Promise<SigninActivityDetail> {
+  return withJWXT(async () => {
+    const result = await _querySigninDetail({
+      activityId: params.activity_id,
+      title: params.title,
+    });
+    return {
+      activity_id: result.activityId,
+      duration: result.duration,
+      end_time: result.endTime,
+      left_seconds: result.leftSeconds,
+      signin_type: result.signinType,
+      start_time: result.startTime,
+      raw: result.raw,
+    };
+  });
+}
+
+export async function getStudentSigninStatus(
+  _credential: string,
+  params: {
+    activity_id: string;
+    title?: string;
+  },
+): Promise<StudentSigninStatus> {
+  return withJWXT(async () => {
+    const result = await _queryStudentSigninStatus({
+      activityId: params.activity_id,
+      title: params.title,
+    });
+    return {
+      sign_status: result.signStatus,
+      attendance_status: result.attendanceStatus,
+      sign_order: result.signOrder,
+      signin_type: result.signinType,
+      raw: result.raw,
+    };
+  });
+}
+
+export async function doStudentSign(
+  _credential: string,
+  params: {
+    activity_id: string;
+    accuracy?: number;
+    latitude?: number;
+    longitude?: number;
+    code?: string;
+  },
+): Promise<StudentSignResult> {
+  return withJWXT(async () => {
+    const result = await _studentSign({
+      activityId: params.activity_id,
+      accuracy: params.accuracy,
+      latitude: params.latitude,
+      longitude: params.longitude,
+      code: params.code,
+    });
+    return {
+      sign_status: result.signStatus,
+      attendance_status: result.attendanceStatus,
+      sign_order: result.signOrder,
+      signin_type: result.signinType,
+      raw: result.raw,
+    };
   });
 }

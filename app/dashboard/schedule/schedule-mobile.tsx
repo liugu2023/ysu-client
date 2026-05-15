@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import {
   Empty,
   EmptyDescription,
@@ -16,12 +15,14 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { CalendarOff, Clock, Layers, MapPin, User } from "lucide-react";
+import { CalendarOff, Layers } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { cn } from "@/lib/utils";
 import type { ClassPeriod, Course, CurrentWeek } from "@/lib/types";
 import { computeMergedBlocks, type ScheduleBlock } from "./schedule-utils";
 import { COURSE_BG_CLASSES, courseColorIndex } from "./course-color";
+import { ActivityModal } from "./activity-modal";
+import { SigninModal } from "./signin-modal";
 
 interface Props {
   courses: Course[];
@@ -66,8 +67,12 @@ export function ScheduleMobile({
   onNextWeek,
 }: Props) {
   const { t } = useTranslation();
-  const [detailDrawer, setDetailDrawer] = useState<Course | null>(null);
   const [overlapDrawer, setOverlapDrawer] = useState<OverlapState>(null);
+  const [activityCourse, setActivityCourse] = useState<Course | null>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [signinActivityId, setSigninActivityId] = useState<string | null>(null);
+  const [signinType, setSigninType] = useState(1);
+  const [signinOpen, setSigninOpen] = useState(false);
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -261,7 +266,8 @@ export function ScheduleMobile({
                 type="button"
                 onClick={(e) => {
                   e.currentTarget.blur();
-                  setDetailDrawer(c);
+                  setActivityCourse(c);
+                  setActivityOpen(true);
                 }}
                 className={cn(
                   "relative z-10 m-0.5 flex flex-col gap-0.5 overflow-hidden rounded-md p-1 text-left transition-opacity active:opacity-60",
@@ -306,61 +312,6 @@ export function ScheduleMobile({
         })}
       </div>
 
-      <Drawer open={!!detailDrawer} onOpenChange={(v) => !v && setDetailDrawer(null)}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{detailDrawer?.name ?? t("schedule.courseDetail")}</DrawerTitle>
-            <DrawerDescription>
-              {detailDrawer
-                ? `${t(`dashboard.weekdayNames.${detailDrawer.week_day}`)} · ${t(
-                    "dashboard.sectionRange",
-                    { start: detailDrawer.start_section, end: detailDrawer.end_section },
-                  )}`
-                : ""}
-            </DrawerDescription>
-          </DrawerHeader>
-          {detailDrawer && (
-            <div className="flex flex-col gap-3 px-4 pb-6 text-sm">
-              {detailDrawer.teacher && (
-                <div className="flex items-center gap-2">
-                  <User className="size-4 shrink-0 text-muted-foreground" />
-                  <span>{detailDrawer.teacher}</span>
-                </div>
-              )}
-              {detailDrawer.classroom && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                  <span>{detailDrawer.classroom}</span>
-                </div>
-              )}
-              {detailDrawer.weeks && (
-                <div className="flex items-center gap-2">
-                  <Clock className="size-4 shrink-0 text-muted-foreground" />
-                  <span>
-                    {t("schedule.weeks")}: {detailDrawer.weeks}
-                  </span>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2 pt-1">
-                {detailDrawer.credit && (
-                  <Badge variant="outline">
-                    {t("schedule.credit")}: {detailDrawer.credit}
-                  </Badge>
-                )}
-                {detailDrawer.course_type && (
-                  <Badge variant="outline">{detailDrawer.course_type}</Badge>
-                )}
-                {detailDrawer.code && (
-                  <Badge variant="outline" className="font-mono">
-                    {detailDrawer.code}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
-        </DrawerContent>
-      </Drawer>
-
       <Drawer open={!!overlapDrawer} onOpenChange={(v) => !v && setOverlapDrawer(null)}>
         <DrawerContent>
           <DrawerHeader>
@@ -387,7 +338,8 @@ export function ScheduleMobile({
                   onClick={(e) => {
                     e.currentTarget.blur();
                     setOverlapDrawer(null);
-                    setDetailDrawer(c);
+                    setActivityCourse(c);
+                    setActivityOpen(true);
                   }}
                   className={cn(
                     "flex flex-col gap-1 rounded-lg p-3 text-left transition-opacity active:opacity-60",
@@ -406,6 +358,25 @@ export function ScheduleMobile({
           </div>
         </DrawerContent>
       </Drawer>
+
+      <ActivityModal
+        course={activityCourse}
+        week={selectedWeek}
+        open={activityOpen}
+        onOpenChange={setActivityOpen}
+        onSigninActivity={(id, type) => {
+          setSigninActivityId(id);
+          setSigninType(type);
+          setSigninOpen(true);
+        }}
+      />
+
+      <SigninModal
+        activityId={signinActivityId}
+        signinType={signinType}
+        open={signinOpen}
+        onOpenChange={setSigninOpen}
+      />
     </>
   );
 }

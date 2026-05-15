@@ -245,6 +245,7 @@ export default function SchedulePage() {
               courses={filteredCourses}
               periods={periods}
               currentWeekday={currentWeekday}
+              selectedWeek={selectedWeek}
             />
           </CardContent>
         </Card>

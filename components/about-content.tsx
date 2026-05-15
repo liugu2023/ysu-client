@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Code,
   CircleFadingArrowUp,
@@ -61,7 +62,11 @@ type UpdateState =
   | "apk-available"
   | "error";
 
+const DEBUG_TAP_THRESHOLD = 7;
+const DEBUG_TAP_WINDOW_MS = 3000;
+
 export function AboutContent() {
+  const router = useRouter();
   const { t } = useTranslation();
   const [state, setState] = useState<UpdateState>("idle");
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -77,6 +82,18 @@ export function AboutContent() {
   // Dialog-local state
   const [dialogPreset, setDialogPreset] = useState("");
   const [dialogCustomValue, setDialogCustomValue] = useState("");
+
+  // Hidden debug trigger
+  const tapTimes = useRef<number[]>([]);
+  const handleIconClick = useCallback(() => {
+    const now = Date.now();
+    tapTimes.current = tapTimes.current.filter((t) => now - t < DEBUG_TAP_WINDOW_MS);
+    tapTimes.current.push(now);
+    if (tapTimes.current.length >= DEBUG_TAP_THRESHOLD) {
+      tapTimes.current = [];
+      router.push("/dashboard/me/debug");
+    }
+  }, [router]);
 
   const toToggleValue = (mirror: string) =>
     mirror === "" ? "__direct__" : mirror;
@@ -177,7 +194,11 @@ export function AboutContent() {
     <div className="flex flex-1 flex-col">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col items-center gap-3 pt-2 pb-1">
-          <div className="size-24 overflow-hidden rounded-3xl shadow-sm ring-1 ring-border">
+          <button
+            type="button"
+            onClick={handleIconClick}
+            className="size-24 overflow-hidden rounded-3xl shadow-sm ring-1 ring-border transition-transform active:scale-95"
+          >
             <img
               src="/icon.svg"
               alt="App icon"
@@ -185,7 +206,7 @@ export function AboutContent() {
               height={96}
               className="size-full dark:invert"
             />
-          </div>
+          </button>
           <div className="flex flex-col items-center gap-1">
             <h2 className="text-xl font-semibold">{t("app.name")}</h2>
             <span className="font-mono text-xs text-muted-foreground">

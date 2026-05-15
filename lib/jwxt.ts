@@ -78,6 +78,10 @@ export interface Course {
   readonly weeks: string;
   readonly credit: string;
   readonly courseType: string;
+  readonly classId: string;
+  readonly syxzdm: string;
+  readonly scheduleId: string;
+  readonly classType: string;
   readonly raw: Record<string, unknown>;
 }
 
@@ -593,6 +597,7 @@ async function reauthorize(): Promise<void> {
       await jwxtJar.removeCookie(c.domain, c.path ?? '/', c.name);
     }
   }
+  resetMobileAuth();
   await authorize(JWXT_PORTAL_URL, jwxtJar);
 }
 
@@ -1344,6 +1349,10 @@ function parseCourse(raw: Record<string, unknown>): Course {
     weeks: rawStr(raw, 'ZCMC'),
     credit: rawStr(raw, 'XF'),
     courseType: rawStr(raw, 'KCXZDM'),
+    classId: rawStr(raw, 'JXBID'),
+    syxzdm: rawStr(raw, 'SYXZDM'),
+    scheduleId: rawStr(raw, 'KBID'),
+    classType: rawStr(raw, 'JXBLX') || '1',
     raw,
   };
 }
@@ -1593,4 +1602,339 @@ function evaluationFormData(args: {
     questionAnswers: JSON.stringify(daList),
   };
   return { requestParamStr: JSON.stringify([payload]) };
+}
+
+// ─── Mobile API (biz/v410) ────────────────────────────────────────────── //
+
+const MOBILE_API_BASE = `${JWXT_BASE_URL}/jwmobile/biz/v410`;
+
+export interface LessonActivity {
+  readonly activityId: string;
+  readonly type: number | null;
+  readonly status: number | null;
+  readonly title: string | null;
+  readonly icon: string | null;
+  readonly signType: string | null;
+  readonly signClazz: string | null;
+  readonly isEnd: boolean;
+  readonly isCreator: boolean;
+  readonly createTime: string | null;
+  readonly raw: Record<string, unknown>;
+}
+
+export interface CurrentLesson {
+  readonly lessonId: string | null;
+  readonly activityList: readonly LessonActivity[];
+  readonly raw: Record<string, unknown>;
+}
+
+export interface SigninActivityDetail {
+  readonly activityId: string;
+  readonly duration: number;
+  readonly endTime: string;
+  readonly leftSeconds: number;
+  readonly signinType: number;
+  readonly startTime: string;
+  readonly raw: Record<string, unknown>;
+}
+
+export interface StudentSigninStatus {
+  readonly signStatus: number;
+  readonly attendanceStatus: number;
+  readonly signOrder: number;
+  readonly signinType: number;
+  readonly raw: Record<string, unknown>;
+}
+
+export interface StudentSignResult {
+  readonly signStatus: number;
+  readonly attendanceStatus: number;
+  readonly signOrder: number;
+  readonly signinType: number;
+  readonly raw: Record<string, unknown>;
+}
+
+let mobileAuthorized = false;
+let inflightMobileAuth: Promise<unknown> | null = null;
+
+const MOBILE_REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
+
+async function captureMobileToken(): Promise<string | null> {
+  let url = `${JWXT_BASE_URL}/jwmobile/auth/index`;
+  let redirects = 0;
+  const maxRedirects = 5;
+
+  while (redirects < maxRedirects) {
+    const resp = await fetchWithJar(jwxtJar, {
+      method: 'GET',
+      url,
+      redirect: 'manual',
+      timeoutMs,
+    });
+
+    const location = headerSingle(resp.headers, 'location') ?? '';
+    if (location) {
+      const tokenMatch = location.match(/[?&]token=([^&#]+)/);
+      if (tokenMatch) {
+        return decodeURIComponent(tokenMatch[1]!);
+      }
+
+      if (MOBILE_REDIRECT_STATUSES.has(resp.status)) {
+        url = new URL(location, url).toString();
+        redirects++;
+        continue;
+      }
+    }
+
+    break;
+  }
+
+  return null;
+}
+
+async function ensureMobileAuthorized(): Promise<void> {
+  if (mobileAuthorized) return;
+  if (inflightMobileAuth) {
+    await inflightMobileAuth;
+    return;
+  }
+
+  inflightMobileAuth = (async () => {
+    // Step 1: Complete CAS SSO to obtain JSESSIONID.
+    await authorize(`${JWXT_BASE_URL}/jwmobile/auth/index`, jwxtJar);
+
+    // Step 2: Capture JWT token from the redirect chain.
+    const token = await captureMobileToken();
+    if (!token) {
+      throw new JWXTProtocolError('Failed to obtain mobile JWT token');
+    }
+
+    // Step 3: Store token as Authorization cookie for jwmobile API calls.
+    await jwxtJar.setCookie(
+      `Authorization=${token}; Path=/jwmobile; Domain=jwxt.ysu.edu.cn; Secure`,
+      `${JWXT_BASE_URL}/jwmobile/`,
+    );
+  })();
+
+  try {
+    await inflightMobileAuth;
+    mobileAuthorized = true;
+  } finally {
+    inflightMobileAuth = null;
+  }
+}
+
+export function resetMobileAuth(): void {
+  mobileAuthorized = false;
+  inflightMobileAuth = null;
+}
+
+async function mobileRequest(
+  method: 'GET' | 'POST',
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  await ensureMobileAuthorized();
+
+  const url = `${MOBILE_API_BASE}/${path}`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  const resp = await fetchWithJar(jwxtJar, {
+    method,
+    url,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+    redirect: 'follow',
+    timeoutMs,
+  });
+
+  if (resp.status === 401 || resp.status === 403) {
+    throw new NotLoggedInError(`HTTP ${resp.status} from ${url}`);
+  }
+  if (resp.status >= 400) {
+    throw new JWXTProtocolError(`HTTP ${resp.status} from ${url}`);
+  }
+
+  const text = await resp.text();
+  let result: Record<string, unknown>;
+  try {
+    result = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new JWXTProtocolError(`non-JSON response from ${url}: ${JSON.stringify(text.slice(0, 200))}`);
+  }
+
+  const code = result['code'];
+  if (code !== 200 && code !== '200' && code !== 0 && code !== '0') {
+    const msg = typeof result['msg'] === 'string' ? result['msg'] : null;
+    if (code === 401 || code === '401') {
+      throw new NotLoggedInError(msg || `Mobile API authentication failed: ${url}`);
+    }
+    const codeVal = typeof code === 'string' || typeof code === 'number' ? code : null;
+    throw new JWXTBusinessError(codeVal, msg, url);
+  }
+
+  const data = result['data'];
+  if (data === undefined || data === null) {
+    return {};
+  }
+  if (typeof data !== 'object') {
+    return { _value: data };
+  }
+  return data as Record<string, unknown>;
+}
+
+async function mobilePost(
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  return mobileRequest('POST', path, body);
+}
+
+async function mobileGet(
+  path: string,
+  query?: Record<string, string>,
+): Promise<Record<string, unknown>> {
+  let urlPath = path;
+  if (query && Object.keys(query).length > 0) {
+    const qs = new URLSearchParams(query).toString();
+    urlPath += `?${qs}`;
+  }
+  return mobileRequest('GET', urlPath);
+}
+
+export async function queryCurrentLesson(params: {
+  teachClassId: string;
+  teachClassType: string;
+  scheduleId: string;
+  week: number;
+  weekDay: number;
+  startNode: number;
+  endNode: number;
+}): Promise<CurrentLesson> {
+  return runWithReauth(async () => {
+    const data = await mobilePost('lesson/queryCurrentLesson', {
+      teachClassId: params.teachClassId,
+      teachClassType: params.teachClassType,
+      scheduleId: params.scheduleId,
+      week: params.week,
+      weekDay: params.weekDay,
+      startNode: params.startNode,
+      endNode: params.endNode,
+    });
+    return parseCurrentLesson(data);
+  });
+}
+
+export async function querySigninDetail(params: {
+  activityId: string;
+  title?: string;
+}): Promise<SigninActivityDetail> {
+  return runWithReauth(async () => {
+    const data = await mobilePost('signin/detail', {
+      activityId: params.activityId,
+      title: params.title ?? '签到',
+    });
+    return parseSigninActivityDetail(data);
+  });
+}
+
+export async function queryStudentSigninStatus(params: {
+  activityId: string;
+  title?: string;
+}): Promise<StudentSigninStatus> {
+  return runWithReauth(async () => {
+    const data = await mobilePost('signin/querySigninDetail', {
+      activityId: params.activityId,
+      title: params.title ?? '签到',
+    });
+    return parseStudentSigninStatus(data);
+  });
+}
+
+export async function studentSign(params: {
+  activityId: string;
+  accuracy?: number;
+  latitude?: number;
+  longitude?: number;
+  code?: string;
+}): Promise<StudentSignResult> {
+  return runWithReauth(async () => {
+    const body: Record<string, unknown> = {
+      activityId: params.activityId,
+      accuracy: params.accuracy ?? 0,
+      latitude: params.latitude ?? 0,
+      longitude: params.longitude ?? 0,
+    };
+    if (params.code) {
+      body.code = params.code;
+    }
+    const data = await mobilePost('signin/sign', body);
+    return parseStudentSignResult(data);
+  });
+}
+
+// ─── Mobile API Parsers ───────────────────────────────────────────────── //
+
+function parseCurrentLesson(raw: Record<string, unknown>): CurrentLesson {
+  const list = Array.isArray(raw['activityList']) ? (raw['activityList'] as unknown[]) : [];
+  return {
+    lessonId: raw['lessonId'] != null ? String(raw['lessonId']) : null,
+    activityList: list.map((a) => parseLessonActivity(a as Record<string, unknown>)),
+    raw,
+  };
+}
+
+function parseLessonActivity(raw: Record<string, unknown>): LessonActivity {
+  const typeRaw = raw['type'];
+  const statusRaw = raw['status'];
+  const titleRaw = raw['title'];
+  const iconRaw = raw['icon'];
+  return {
+    activityId: rawStr(raw, 'activityId'),
+    type: typeRaw == null ? null : rawInt(raw, 'type'),
+    status: statusRaw == null ? null : rawInt(raw, 'status'),
+    title: titleRaw == null ? null : rawStr(raw, 'title'),
+    icon: iconRaw == null ? null : rawStr(raw, 'icon'),
+    signType: rawStr(raw, 'signType'),
+    signClazz: rawStr(raw, 'signClazz'),
+    isEnd: Boolean(raw['isEnd']),
+    isCreator: Boolean(raw['isCreator']),
+    createTime: raw['createTime'] == null ? null : rawStr(raw, 'createTime'),
+    raw,
+  };
+}
+
+function parseSigninActivityDetail(raw: Record<string, unknown>): SigninActivityDetail {
+  return {
+    activityId: rawStr(raw, 'activityId'),
+    duration: rawInt(raw, 'duration'),
+    endTime: rawStr(raw, 'endTime'),
+    leftSeconds: rawInt(raw, 'leftSeconds'),
+    signinType: rawInt(raw, 'signinType'),
+    startTime: rawStr(raw, 'startTime'),
+    raw,
+  };
+}
+
+function parseStudentSigninStatus(raw: Record<string, unknown>): StudentSigninStatus {
+  return {
+    signStatus: rawInt(raw, 'signStatus'),
+    attendanceStatus: rawInt(raw, 'attendanceStatus'),
+    signOrder: rawInt(raw, 'signOrder'),
+    signinType: rawInt(raw, 'signinType'),
+    raw,
+  };
+}
+
+function parseStudentSignResult(raw: Record<string, unknown>): StudentSignResult {
+  return {
+    signStatus: rawInt(raw, 'signStatus'),
+    attendanceStatus: rawInt(raw, 'attendanceStatus'),
+    signOrder: rawInt(raw, 'signOrder'),
+    signinType: rawInt(raw, 'signinType'),
+    raw,
+  };
 }

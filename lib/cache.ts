@@ -33,3 +33,20 @@ export function cacheSet<T>(key: string, data: T): void {
 export function cacheKey(parts: string[]): string {
   return parts.join("|");
 }
+
+export function clearAllCache(): void {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(CACHE_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+    for (const key of keysToRemove) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore
+  }
+}
