@@ -120,6 +120,8 @@ export const zh = {
     failed: "自动登录失败，请重新登录",
     mfaDescription: "请输入验证码完成登录",
     captchaRequired: "需要验证码，无法自动登录",
+    errorRateLimitInterval: "登录过于频繁，请 {seconds} 秒后再试",
+    errorRateLimitWindow: "15分钟内登录次数已达上限，请 {minutes}:{seconds} 后再试",
   },
   logout: {
     confirm: "确定要退出登录吗？",
@@ -585,6 +587,8 @@ export const en = {
     failed: "Auto-login failed, please log in again",
     mfaDescription: "Enter the verification code to complete login",
     captchaRequired: "Captcha required, cannot auto-login",
+    errorRateLimitInterval: "Too many login attempts. Please try again in {seconds}s",
+    errorRateLimitWindow: "Login limit reached (3 per 15 min). Please try again in {minutes}:{seconds}",
   },
   logout: {
     confirm: "Are you sure you want to log out?",

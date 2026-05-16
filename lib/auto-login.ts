@@ -38,8 +38,10 @@ export async function tryAutoLogin(): Promise<boolean> {
         const seconds = totalSeconds % 60;
         const message =
           limit.reason === "window"
-            ? `15分钟内登录次数已达上限，请 ${minutes}:${seconds.toString().padStart(2, "0")} 后再试`
-            : `登录过于频繁，请 ${seconds} 秒后再试`;
+            ? getText("autoLogin.errorRateLimitWindow")
+                .replace("{minutes}", String(minutes))
+                .replace("{seconds}", seconds.toString().padStart(2, "0"))
+            : getText("autoLogin.errorRateLimitInterval").replace("{seconds}", String(seconds));
         toast.error(message);
         return false;
       }
