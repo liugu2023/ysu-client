@@ -49,7 +49,6 @@ export default function LoginPage() {
   const [needsCaptcha, setNeedsCaptcha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [skipRateLimit, setSkipRateLimit] = useState(false);
 
   useEffect(() => {
     loadRememberedCredentials().then((r) => {
@@ -172,33 +171,29 @@ export default function LoginPage() {
       return;
     }
 
-    if (!skipRateLimit) {
-      const limit = checkRateLimit();
-      if (!limit.allowed) {
-        const totalSeconds = Math.ceil(limit.retryAfterMs / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        const message =
-          limit.reason === "window"
-            ? t("login.errorRateLimitWindow")
-                .replace("{minutes}", String(minutes))
-                .replace("{seconds}", seconds.toString().padStart(2, "0"))
-            : t("login.errorRateLimitInterval").replace("{seconds}", String(seconds));
+    const limit = checkRateLimit();
+    if (!limit.allowed) {
+      const totalSeconds = Math.ceil(limit.retryAfterMs / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      const message =
+        limit.reason === "window"
+          ? t("login.errorRateLimitWindow")
+              .replace("{minutes}", String(minutes))
+              .replace("{seconds}", seconds.toString().padStart(2, "0"))
+          : t("login.errorRateLimitInterval").replace("{seconds}", String(seconds));
 
-        toast.error(message, {
-          action: {
-            label: t("login.skipRateLimit"),
-            onClick: () => doLogin(true),
-          },
-        });
-        setCountdown(totalSeconds);
-        return;
-      }
+      toast.error(message, {
+        action: {
+          label: t("login.skipRateLimit"),
+          onClick: () => doLogin(true),
+        },
+      });
+      setCountdown(totalSeconds);
+      return;
     }
 
-    const shouldSkip = skipRateLimit;
-    setSkipRateLimit(false);
-    await doLogin(shouldSkip);
+    await doLogin(false);
   }
 
   return (

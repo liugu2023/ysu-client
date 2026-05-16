@@ -39,7 +39,7 @@ import {
 import { toast } from "sonner";
 import { getStudentInfo } from "@/lib/api";
 import { resetSDK } from "@/lib/sdk";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import type { StudentInfo } from "@/lib/types";
 import {
   BookOpen,
@@ -150,6 +150,7 @@ export default function DashboardLayout({
       toast.error(message);
       return;
     }
+    recordLoginAttempt();
 
     try {
       const { tryAutoLogin } = await import("@/lib/auto-login");

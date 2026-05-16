@@ -39,7 +39,7 @@ import { useTranslation } from "@/lib/i18n/use-translation";
 import { getStudentInfo } from "@/lib/api";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
 import { resetSDK } from "@/lib/sdk";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import { useUpdateStore } from "@/lib/update-store";
 import { APP_VERSION, APP_BUILD } from "@/lib/version";
 import type { StudentInfo } from "@/lib/types";
@@ -99,6 +99,7 @@ export default function MePage() {
       toast.error(message);
       return;
     }
+    recordLoginAttempt();
 
     try {
       const { tryAutoLogin } = await import("@/lib/auto-login");
