@@ -27,10 +27,8 @@ export async function tryAutoLogin(): Promise<boolean> {
 
   inflightAutoLogin = (async () => {
     try {
-      resetCAS();
-      resetJWXT();
-
       await prepareLogin();
+
       const limit = checkRateLimit();
       if (!limit.allowed) {
         const totalSeconds = Math.ceil(limit.retryAfterMs / 1000);
@@ -46,6 +44,9 @@ export async function tryAutoLogin(): Promise<boolean> {
         return false;
       }
       recordLoginAttempt();
+
+      resetCAS();
+      resetJWXT();
 
       if (await checkCaptchaNeeded(remembered.username)) {
         toast.error(getText("autoLogin.captchaRequired"));
