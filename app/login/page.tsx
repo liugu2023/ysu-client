@@ -92,46 +92,14 @@ export default function LoginPage() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!username || !password) {
-      toast.error(t("login.errorMissingCredentials"));
-      return;
-    }
-
-    if (!skipRateLimit) {
-      const limit = checkRateLimit();
-      if (!limit.allowed) {
-        const totalSeconds = Math.ceil(limit.retryAfterMs / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        const message =
-          limit.reason === "window"
-            ? t("login.errorRateLimitWindow")
-                .replace("{minutes}", String(minutes))
-                .replace("{seconds}", seconds.toString().padStart(2, "0"))
-            : t("login.errorRateLimitInterval").replace("{seconds}", String(seconds));
-
-        toast.error(message, {
-          action: {
-            label: t("login.skipRateLimit"),
-            onClick: () => setSkipRateLimit(true),
-          },
-        });
-        setCountdown(totalSeconds);
-        return;
-      }
-    }
-
-    setSkipRateLimit(false);
-
+  async function doLogin(skipRateLimitCheck: boolean) {
     setLoading(true);
     try {
       const res = await loginStep1({
         username,
         password,
         captcha: needsCaptcha ? captcha : undefined,
-        skip_rate_limit: skipRateLimit,
+        skip_rate_limit: skipRateLimitCheck,
       });
 
       if (res.authenticated && res.credential) {
@@ -195,6 +163,42 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!username || !password) {
+      toast.error(t("login.errorMissingCredentials"));
+      return;
+    }
+
+    if (!skipRateLimit) {
+      const limit = checkRateLimit();
+      if (!limit.allowed) {
+        const totalSeconds = Math.ceil(limit.retryAfterMs / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const message =
+          limit.reason === "window"
+            ? t("login.errorRateLimitWindow")
+                .replace("{minutes}", String(minutes))
+                .replace("{seconds}", seconds.toString().padStart(2, "0"))
+            : t("login.errorRateLimitInterval").replace("{seconds}", String(seconds));
+
+        toast.error(message, {
+          action: {
+            label: t("login.skipRateLimit"),
+            onClick: () => doLogin(true),
+          },
+        });
+        setCountdown(totalSeconds);
+        return;
+      }
+    }
+
+    const shouldSkip = skipRateLimit;
+    setSkipRateLimit(false);
+    await doLogin(shouldSkip);
   }
 
   return (
