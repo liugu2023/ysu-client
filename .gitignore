@@ -70,3 +70,4 @@ website/.edgeone/
 # Superpowers docs (generated)
 /docs/
 
+website/src/data/changelog.json
