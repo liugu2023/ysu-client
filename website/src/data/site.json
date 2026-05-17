@@ -1,10 +1,10 @@
 {
   "icp": {
-    "text": "京ICP备XXXXXXXX号",
+    "text": "浙ICP备2024107040号-1",
     "href": "https://beian.miit.gov.cn/"
   },
   "beian": {
-    "text": "京公网安备 XXXXXXXXXXXX号",
+    "text": "浙公网安备33032702001074号",
     "href": "https://beian.mps.gov.cn/#/query/webSearch"
   }
 }
