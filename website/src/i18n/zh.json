@@ -1,0 +1,82 @@
+{
+  "appName": "燕大终端",
+  "tagline": "燕山大学教务系统第三方客户端",
+  "hero": {
+    "title": "燕大终端",
+    "subtitle": "燕山大学教务系统第三方 Android 客户端",
+    "download": "下载 APK",
+    "github": "GitHub 仓库"
+  },
+  "nav": {
+    "features": "功能",
+    "screenshots": "截图",
+    "download": "下载",
+    "changelog": "更新日志",
+    "privacy": "隐私声明"
+  },
+  "features": {
+    "title": "功能亮点",
+    "grades": {
+      "title": "查成绩",
+      "desc": "按学期筛选，查看统计、分布和排名"
+    },
+    "schedule": {
+      "title": "看课表",
+      "desc": "合并理论课与实验课，按周切换，实时高亮当前课程"
+    },
+    "exams": {
+      "title": "查考试",
+      "desc": "按学期查看考试安排"
+    },
+    "gpa": {
+      "title": "看绩点",
+      "desc": "学分和绩点一目了然"
+    },
+    "training": {
+      "title": "培养方案",
+      "desc": "查看课程完成情况和学业预警"
+    },
+    "evaluation": {
+      "title": "评教",
+      "desc": "支持批量一键自动填写最高分"
+    }
+  },
+  "screenshots": {
+    "title": "应用截图",
+    "placeholder": "截图占位"
+  },
+  "download": {
+    "title": "下载",
+    "latestVersion": "最新版本",
+    "releaseDate": "发布日期",
+    "changelogLink": "查看更新日志",
+    "githubFallback": "GitHub Releases 备用下载",
+    "systemRequirements": "系统要求：Android System WebView Chromium v111+"
+  },
+  "footer": {
+    "disclaimer": "本应用为第三方客户端，与燕山大学官方无任何关联。",
+    "license": "GPL-3.0",
+    "copyright": "© 2026 Youwenqwq",
+    "relatedProjects": "相关项目",
+    "sourceCode": "源代码"
+  },
+  "changelog": {
+    "title": "更新日志",
+    "back": "返回首页"
+  },
+  "privacy": {
+    "title": "隐私声明与免责声明",
+    "dataSource": {
+      "title": "数据来源与安全性",
+      "content": "燕大终端 App 的所有业务逻辑均在本地实现，从官方教务系统获取数据并保存在本地，中间不经过任何其他服务器。登录之后的凭据数据存储在本地，凭据通过系统安全存储（Android Keystore / iOS Keychain）加密保存。"
+    },
+    "disclaimer": {
+      "title": "免责声明",
+      "content": "本项目为第三方客户端，与燕山大学官方无任何关联。仅供个人学习交流，代码完全由 AI 进行编写，人工仅进行了基本设计调试与粗略审计，使用即默认了解并接受相关风险，请勿用于侵犯他人权益或违反学校规定的场景。"
+    }
+  },
+  "lang": {
+    "switch": "English",
+    "current": "中文"
+  }
+}

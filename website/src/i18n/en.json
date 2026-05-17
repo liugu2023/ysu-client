@@ -1,0 +1,82 @@
+{
+  "appName": "YSU Terminal",
+  "tagline": "Third-party client for Yanshan University academic affairs system",
+  "hero": {
+    "title": "YSU Terminal",
+    "subtitle": "Third-party Android client for Yanshan University academic affairs system",
+    "download": "Download APK",
+    "github": "GitHub Repository"
+  },
+  "nav": {
+    "features": "Features",
+    "screenshots": "Screenshots",
+    "download": "Download",
+    "changelog": "Changelog",
+    "privacy": "Privacy"
+  },
+  "features": {
+    "title": "Features",
+    "grades": {
+      "title": "Grades",
+      "desc": "Filter by semester, view statistics, distribution, and ranking"
+    },
+    "schedule": {
+      "title": "Schedule",
+      "desc": "Merge theory and lab courses, switch by week, highlight current course"
+    },
+    "exams": {
+      "title": "Exams",
+      "desc": "View exam schedule by semester"
+    },
+    "gpa": {
+      "title": "GPA",
+      "desc": "Credits and GPA at a glance"
+    },
+    "training": {
+      "title": "Training Plan",
+      "desc": "View course completion and academic warnings"
+    },
+    "evaluation": {
+      "title": "Evaluation",
+      "desc": "Batch auto-fill highest score for student evaluations"
+    }
+  },
+  "screenshots": {
+    "title": "Screenshots",
+    "placeholder": "Screenshot placeholder"
+  },
+  "download": {
+    "title": "Download",
+    "latestVersion": "Latest Version",
+    "releaseDate": "Release Date",
+    "changelogLink": "View Changelog",
+    "githubFallback": "GitHub Releases (mirror)",
+    "systemRequirements": "Requires: Android System WebView Chromium v111+"
+  },
+  "footer": {
+    "disclaimer": "This is a third-party client, not affiliated with Yanshan University.",
+    "license": "GPL-3.0",
+    "copyright": "© 2026 Youwenqwq",
+    "relatedProjects": "Related Projects",
+    "sourceCode": "Source Code"
+  },
+  "changelog": {
+    "title": "Changelog",
+    "back": "Back to Home"
+  },
+  "privacy": {
+    "title": "Privacy & Disclaimer",
+    "dataSource": {
+      "title": "Data Source & Security",
+      "content": "All business logic is implemented locally. Data is fetched from the official academic affairs system and stored locally. No third-party servers are involved. Credentials are encrypted and stored using the device's secure storage (Android Keystore / iOS Keychain)."
+    },
+    "disclaimer": {
+      "title": "Disclaimer",
+      "content": "This project is a third-party client, not affiliated with Yanshan University. It is for personal learning and communication purposes only. The code is entirely written by AI, with only basic design debugging and rough auditing done manually. By using this app, you acknowledge and accept the associated risks. Do not use it for infringing on others' rights or violating school regulations."
+    }
+  },
+  "lang": {
+    "switch": "中文",
+    "current": "English"
+  }
+}
