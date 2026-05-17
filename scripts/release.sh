@@ -72,7 +72,7 @@ gh release upload "${TAG}" version.json --clobber
 echo "Generating changelog.json..."
 gh api "repos/${REPO}/releases" | jq 'map({
   version: (.tag_name | ltrimstr("v")),
-  date: (.published_at | split("T")[0]),
+  date: (.published_at | fromdateiso8601 + 28800 | strftime("%Y-%m-%d")),
   body: .body
 })' > website/src/data/changelog.json
 
