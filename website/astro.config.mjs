@@ -6,6 +6,9 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
+    ssr: {
+      noExternal: ['lucide-react'],
+    },
   },
   i18n: {
     defaultLocale: 'zh',

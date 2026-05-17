@@ -1,0 +1,34 @@
+---
+import { BookOpen, Calendar, ClipboardList, BarChart3, GraduationCap, FileCheck } from 'lucide-react';
+
+const locale = Astro.currentLocale ?? 'zh';
+const t = await import(`../i18n/${locale}.json`).then(m => m.default);
+
+const features = [
+  { icon: BookOpen, title: t.features.grades.title, desc: t.features.grades.desc },
+  { icon: Calendar, title: t.features.schedule.title, desc: t.features.schedule.desc },
+  { icon: ClipboardList, title: t.features.exams.title, desc: t.features.exams.desc },
+  { icon: BarChart3, title: t.features.gpa.title, desc: t.features.gpa.desc },
+  { icon: GraduationCap, title: t.features.training.title, desc: t.features.training.desc },
+  { icon: FileCheck, title: t.features.evaluation.title, desc: t.features.evaluation.desc },
+];
+---
+
+<section id="features" class="px-4 py-20 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-6xl">
+    <h2 class="text-center text-3xl font-bold tracking-tight sm:text-4xl">
+      {t.features.title}
+    </h2>
+    <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {features.map(feature => (
+        <div class="group rounded-2xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:shadow-lg">
+          <div class="mb-4 inline-flex rounded-xl bg-primary/10 p-3 text-primary">
+            <feature.icon className="h-6 w-6" />
+          </div>
+          <h3 class="text-lg font-semibold">{feature.title}</h3>
+          <p class="mt-2 text-sm text-muted-foreground">{feature.desc}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

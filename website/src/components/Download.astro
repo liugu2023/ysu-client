@@ -1,0 +1,56 @@
+---
+import { Download, Code, FileText } from 'lucide-react';
+
+const locale = Astro.currentLocale ?? 'zh';
+const isEn = locale === 'en';
+const t = await import(`../i18n/${locale}.json`).then(m => m.default);
+
+const version = '0.7.4';
+const releaseDate = '2026-05-18';
+---
+
+<section id="download" class="px-4 py-20 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-2xl text-center">
+    <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
+      {t.download.title}
+    </h2>
+    <div class="mt-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
+      <div class="text-sm text-muted-foreground">
+        <span>{t.download.latestVersion}</span>
+      </div>
+      <div class="mt-2 text-4xl font-bold">v{version}</div>
+      <div class="mt-1 text-sm text-muted-foreground">{t.download.releaseDate}: {releaseDate}</div>
+
+      <a
+        href="/updates/app-release.apk"
+        class="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:scale-105 hover:shadow-xl"
+      >
+        <Download className="w-5 h-5" />
+        {t.hero.download}
+      </a>
+
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm">
+        <a
+          href={isEn ? '/en/changelog' : '/changelog'}
+          class="inline-flex items-center gap-1.5 text-primary hover:underline"
+        >
+          <FileText className="w-4 h-4" />
+          {t.download.changelogLink}
+        </a>
+        <a
+          href="https://github.com/Youwenqwq/ysu-client/releases"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Code className="w-4 h-4" />
+          {t.download.githubFallback}
+        </a>
+      </div>
+
+      <p class="mt-6 text-xs text-muted-foreground">
+        {t.download.systemRequirements}
+      </p>
+    </div>
+  </div>
+</section>

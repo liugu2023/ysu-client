@@ -1,0 +1,23 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from './Header.astro';
+import Hero from './Hero.astro';
+import Features from './Features.astro';
+import Screenshots from './Screenshots.astro';
+import Download from './Download.astro';
+import Footer from './Footer.astro';
+
+const locale = Astro.currentLocale ?? 'zh';
+const t = await import(`../i18n/${locale}.json`).then(m => m.default);
+---
+
+<Layout title={t.appName}>
+  <Header />
+  <main>
+    <Hero />
+    <Features />
+    <Screenshots />
+    <Download />
+  </main>
+  <Footer />
+</Layout>
