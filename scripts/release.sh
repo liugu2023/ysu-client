@@ -68,5 +68,20 @@ EOF
 echo "Uploading version.json..."
 gh release upload "${TAG}" version.json --clobber
 
+# Build website
+echo "Building website..."
+cd website
+npm run build
+cd ..
+
+# Copy OTA files to website dist
+mkdir -p website/dist/updates
+cp dist.zip website/dist/updates/
+cp "${APK_PATH}" website/dist/updates/app-release.apk
+cp version.json website/dist/updates/
+
+echo "Website built with OTA files ready for deployment."
+echo "Deploy website/dist/ to EdgeOne Pages."
+
 echo "Release ${TAG} published!"
 rm dist.zip version.json

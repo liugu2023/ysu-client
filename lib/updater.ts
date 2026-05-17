@@ -17,6 +17,7 @@ export interface UpdateMirror {
 }
 
 export const UPDATE_MIRRORS: readonly UpdateMirror[] = [
+  { label: "官方源", value: "https://your-domain.com/updates/" },
   { label: "GitHub 直连", value: "" },
   { label: "ghproxy.com", value: "https://ghproxy.com/" },
   { label: "ghfast.top", value: "https://ghfast.top/" },
