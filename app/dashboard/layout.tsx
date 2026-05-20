@@ -222,7 +222,7 @@ export default function DashboardLayout({
           </button>
         </SidebarFooter>
       </Sidebar>
-      <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden pt-12 pb-16 md:overflow-auto md:pb-0 md:pt-0">
+      <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden pt-[calc(3rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))] md:overflow-auto md:pb-0 md:pt-0">
         <MobileTopBar title={pageTitle} showBack={showBack} />
         <header className="hidden items-center justify-between gap-4 border-b px-6 py-4 md:flex">
           <div className="flex items-center gap-3">
