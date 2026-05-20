@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/field";
 import { useSettingsStore, type CardStyle, type BackgroundStyle } from "@/lib/settings-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { saveBackgroundImage, removeBackgroundImage } from "@/lib/background-storage";
 import { ImagePlus, Trash2 } from "lucide-react";
 
 export default function BackgroundSettingsPage() {
@@ -45,7 +46,7 @@ export default function BackgroundSettingsPage() {
     fileInputRef.current?.click();
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
@@ -54,14 +55,20 @@ export default function BackgroundSettingsPage() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
-      setBackgroundImage(reader.result as string);
+    reader.onload = async () => {
+      try {
+        const storedUrl = await saveBackgroundImage(reader.result as string);
+        setBackgroundImage(storedUrl);
+      } catch {
+        toast.error(t("app.networkError"));
+      }
     };
     reader.readAsDataURL(file);
     e.target.value = "";
   }
 
-  function handleRemoveImage() {
+  async function handleRemoveImage() {
+    await removeBackgroundImage();
     setBackgroundImage("");
   }
 

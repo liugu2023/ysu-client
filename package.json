@@ -17,6 +17,7 @@
     "@capacitor/android": "^8.3.3",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.3",
+    "@capacitor/filesystem": "^8.1.2",
     "@capgo/capacitor-updater": "^8.45.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
