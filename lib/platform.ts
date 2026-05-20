@@ -1,4 +1,4 @@
-/** 检测当前运行环境是 Capacitor、Tauri 还是纯 Web。 */
+/** 检测当前是否在 Capacitor 原生环境中运行。 */
 
 export function isCapacitor(): boolean {
   try {
@@ -8,12 +8,4 @@ export function isCapacitor(): boolean {
   } catch {
     return false;
   }
-}
-
-export function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI__" in window;
-}
-
-export function isWeb(): boolean {
-  return !isCapacitor() && !isTauri();
 }

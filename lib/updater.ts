@@ -87,7 +87,7 @@ function getApkUrl(mirrorPrefix: string, githubUrl: string): string {
 /** Check for a newer version. Respects 30-min cooldown when `auto` is true. */
 export async function checkForUpdate(
   auto = false,
-  mirrorPrefix = "",
+  mirrorPrefix = OFFICIAL_BASE,
 ): Promise<UpdateInfo> {
   if (auto) {
     const last = localStorage.getItem(LAST_CHECK_KEY);
