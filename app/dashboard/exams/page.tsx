@@ -23,6 +23,7 @@ import {
 import { useAuthStore } from "@/lib/auth-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { getExams } from "@/lib/api";
+import { syncExamsToWidget } from "@/lib/widget-bridge";
 import type { Exam } from "@/lib/types";
 import {
   CalendarOff,
@@ -72,6 +73,7 @@ export default function ExamsPage() {
       try {
         const e = await getExams(credential!);
         setExams(e);
+        syncExamsToWidget(e).catch(() => {});
       } catch (err) {
         toast.error((err as Error).message || t("app.updating"));
       } finally {
@@ -87,6 +89,7 @@ export default function ExamsPage() {
     try {
       const e = await getExams(credential, term || undefined);
       setExams(e);
+      syncExamsToWidget(e).catch(() => {});
     } catch (err) {
       toast.error((err as Error).message || t("app.updating"));
     } finally {

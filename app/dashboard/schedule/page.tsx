@@ -32,6 +32,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { isCourseActiveInWeek } from "./schedule-utils";
 import { ScheduleTablet } from "./schedule-tablet";
 import { ScheduleMobile } from "./schedule-mobile";
+import { syncScheduleToWidget } from "@/lib/widget-bridge";
 
 export default function SchedulePage() {
   const credential = useAuthStore((s) => s.credential);
@@ -104,6 +105,8 @@ export default function SchedulePage() {
         cacheSet(cacheKey(["schedule", credential!]), c);
         cacheSet(cacheKey(["periods", credential!]), p.filter((x) => x.is_in_use).sort((a, b) => a.section - b.section));
         cacheSet(cacheKey(["week", credential!]), w);
+        const activeCourses = w?.week ? c.filter((course) => isCourseActiveInWeek(course, w.week)) : c;
+        syncScheduleToWidget(activeCourses, w, p.filter((x) => x.is_in_use).sort((a, b) => a.section - b.section)).catch(() => {});
         useRefreshStore.getState().markFresh();
       } catch (err) {
         if (hasCache) {
@@ -134,6 +137,10 @@ export default function SchedulePage() {
       if (w !== null) {
         setCurrentWeek(w);
         cacheSet(cacheKey(["week", credential!]), w);
+      }
+      if (c !== null && w !== null) {
+        const activeCourses = w.week ? c.filter((course) => isCourseActiveInWeek(course, w.week)) : c;
+        syncScheduleToWidget(activeCourses, w, periods).catch(() => {});
       }
       setFilterDrawerOpen(false);
     } catch (err) {

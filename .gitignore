@@ -18,7 +18,16 @@
 # production
 /build
 /dist
-/android
+
+/android/*
+!/android/build.gradle
+!/android/app/
+/android/app/*
+!/android/app/build.gradle
+!/android/app/src/
+/android/app/src/*
+!/android/app/src/main/
+/android/app/src/main/assets/public/
 
 # misc
 .DS_Store

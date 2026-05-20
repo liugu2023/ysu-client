@@ -10,6 +10,7 @@ import { SDKProvider } from "@/components/sdk-provider"
 import { MFAModal } from "@/components/mfa-modal"
 import { BackgroundImage } from "@/components/background-image"
 import { BackButtonHandler } from "@/components/back-button-handler"
+import { DeepLinkHandler } from "@/components/deep-link-handler"
 import { cn } from "@/lib/utils";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' })
@@ -55,6 +56,7 @@ export default function RootLayout({
               <TooltipProvider>
                 <BackgroundImage />
                 <BackButtonHandler />
+                <DeepLinkHandler />
                 {children}
                 <Toaster />
                 <MFAModal />
