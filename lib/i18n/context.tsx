@@ -33,19 +33,19 @@ function detectSystemLocale(): Locale {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(detectSystemLocale);
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    if (typeof window === "undefined") return "zh";
+    if (localStorage.getItem(MANUAL_KEY)) {
+      return (localStorage.getItem(STORAGE_KEY) as Locale) || "zh";
+    }
+    return detectSystemLocale();
+  });
 
-  // On mount: detect system language unless user has manually set one
+  // On mount: if no manual override, detect system language via Capacitor
+  // and fall back to browser navigator.language
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // User has manually set language — respect it and skip system detection
-    if (localStorage.getItem(MANUAL_KEY)) {
-      const saved = localStorage.getItem(STORAGE_KEY) as Locale | null;
-      if (saved && saved !== locale) {
-        setLocaleState(saved);
-      }
-      return;
-    }
+    if (localStorage.getItem(MANUAL_KEY)) return;
 
     let cancelled = false;
 
