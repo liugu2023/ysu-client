@@ -25,6 +25,7 @@
 !/android/app/
 /android/app/*
 !/android/app/build.gradle
+!/android/app/proguard-rules.pro
 !/android/app/src/
 /android/app/src/*
 !/android/app/src/main/
