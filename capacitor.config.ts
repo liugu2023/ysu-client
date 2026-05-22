@@ -15,6 +15,9 @@ const config: CapacitorConfig = {
       resetWhenUpdate: true,
       appReadyTimeout: 15000,
     },
+    SystemBars: {
+      insetsHandling: 'disable',
+    },
   },
 };
 

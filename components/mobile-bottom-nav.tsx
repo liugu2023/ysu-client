@@ -33,7 +33,7 @@ export function MobileBottomNav() {
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border backdrop-blur pb-[env(safe-area-inset-bottom)] md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border backdrop-blur pb-[var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px))] md:hidden",
         hasBackground
           ? "bg-background/60 supports-[backdrop-filter]:bg-background/40"
           : "bg-background/95 supports-[backdrop-filter]:bg-background/80",
