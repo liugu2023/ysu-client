@@ -10,7 +10,7 @@ import android.util.TypedValue
 import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
@@ -134,7 +134,7 @@ class WebViewCompatPlugin : Plugin() {
         container.addView(checkBox)
 
         activity?.runOnUiThread {
-            AlertDialog.Builder(ctx)
+            MaterialAlertDialogBuilder(ctx)
                 .setTitle(strings.title)
                 .setView(container)
                 .setPositiveButton(strings.help) { _, _ ->

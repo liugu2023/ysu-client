@@ -21,6 +21,7 @@
 
 /android/*
 !/android/build.gradle
+!/android/variables.gradle
 !/android/app/
 /android/app/*
 !/android/app/build.gradle
