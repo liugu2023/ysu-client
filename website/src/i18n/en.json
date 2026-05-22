@@ -12,7 +12,8 @@
     "screenshots": "Screenshots",
     "download": "Download",
     "changelog": "Changelog",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "faq": "FAQ"
   },
   "features": {
     "title": "Features",
@@ -76,6 +77,51 @@
     "disclaimer": {
       "title": "Disclaimer",
       "content": "This project is a third-party client, not affiliated with Yanshan University. It is for personal learning and communication purposes only. The code is entirely written by AI, with only basic design debugging and rough auditing done manually. By using this app, you acknowledge and accept the associated risks. Do not use it for infringing on others' rights or violating school regulations."
+    }
+  },
+  "faq": {
+    "title": "FAQ",
+    "back": "Back to Home",
+    "compatibility": {
+      "title": "WebView Compatibility",
+      "intro": "This app relies on Android System WebView to render the interface. Different WebView versions vary in feature support and rendering behavior:",
+      "versions": [
+        {
+          "label": "Below WebView v111",
+          "desc": "Minimum supported version. Versions below this may cause severe style distortion or even complete failure to render styles."
+        },
+        {
+          "label": "WebView v111 ~ v118",
+          "desc": "Usable, but transparent effects in the title bar and some card border styles may not render correctly. Does not affect normal usage."
+        },
+        {
+          "label": "WebView v119+",
+          "desc": "All styles in this app can be rendered correctly."
+        },
+        {
+          "label": "WebView v140+",
+          "desc": "Supports immersive status bar and gesture navigation bar (小白条)."
+        }
+      ],
+      "recommendation": "It is recommended to update WebView to the latest version. Newer versions not only add more features and fix bugs, but often also bring performance improvements."
+    },
+    "webviewUpdate": {
+      "title": "How to Update Android System WebView",
+      "intro": "Android System WebView is a system component responsible for rendering web content within apps. Keeping WebView updated ensures the app receives the latest security patches, performance improvements, and web feature support.",
+      "play": {
+        "title": "Update via Google Play Store",
+        "desc": "If you can access the Google Play Store, update from there:",
+        "link": "https://play.google.com/store/apps/details?id=com.google.android.webview",
+        "linkText": "Open WebView in Google Play"
+      },
+      "manual": {
+        "title": "Manual Update or Manufacturer Store",
+        "desc": "If you cannot access the Play Store, try manually finding and installing a newer version of WebView, or check your manufacturer's app store for WebView updates."
+      },
+      "huawei": {
+        "title": "Special Note for Huawei/Honor Devices",
+        "desc": "Due to manufacturer limitations, some Huawei/Honor models have their system WebView locked to Huawei WebView, whose Chromium version is outdated (latest is only v114, and even v99 has been encountered). This cannot be resolved. It is recommended to update to the latest v114 version provided by the manufacturer to maximize the experience."
+      }
     }
   },
   "lang": {

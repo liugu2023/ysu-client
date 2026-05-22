@@ -16,6 +16,7 @@ const navItems = [
   { label: t.nav.features, href: isHome ? '#features' : `${homePrefix}#features` },
   { label: t.nav.screenshots, href: isEn ? '/en/screenshots' : '/screenshots' },
   { label: t.nav.download, href: isHome ? '#download' : `${homePrefix}#download` },
+  { label: t.nav.faq, href: isEn ? '/en/faq' : '/faq' },
 ];
 
 const switchUrl = isEn ? '/' : '/en/';
@@ -23,10 +24,12 @@ const switchLabel = isEn ? t.lang.switch : 'English';
 ---
 
 <header class="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
-  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-    <a href={isEn ? '/en/' : '/'} class="text-lg font-semibold">
-      {t.appName}
-    </a>
+  <div class="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6">
+    <div class="flex-1 flex items-center">
+      <a href={isEn ? '/en/' : '/'} class="text-lg font-semibold">
+        {t.appName}
+      </a>
+    </div>
 
     <nav class="hidden md:flex items-center gap-6">
       {navItems.map(item => (
@@ -36,7 +39,7 @@ const switchLabel = isEn ? t.lang.switch : 'English';
       ))}
     </nav>
 
-    <div class="flex items-center gap-1">
+    <div class="flex-1 flex items-center justify-end gap-1">
       <LangSwitch client:load currentLang={locale} switchLabel={switchLabel} switchUrl={switchUrl} />
       <ThemeToggle client:load />
       <MobileNav client:load items={navItems} />
