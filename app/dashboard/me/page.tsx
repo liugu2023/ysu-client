@@ -4,44 +4,31 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useTheme } from "next-themes";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
 import {
   BookOpen,
   ChevronRight,
   FileText,
   GraduationCap,
   LogIn,
-  LogOut,
-  Monitor,
-  Moon,
+  Settings,
   Sun,
+  Moon,
   User,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
-import { useSettingsStore } from "@/lib/settings-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { useMobileHeaderRight } from "@/lib/mobile-header-store";
 import { getStudentInfo } from "@/lib/api";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
 import { resetSDK } from "@/lib/sdk";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import { useUpdateStore } from "@/lib/update-store";
+import { useTheme } from "next-themes";
 import { APP_VERSION, APP_BUILD } from "@/lib/version";
 import type { StudentInfo } from "@/lib/types";
 
@@ -49,16 +36,12 @@ export default function MePage() {
   const router = useRouter();
   const credential = useAuthStore((s) => s.credential);
   const username = useAuthStore((s) => s.username);
-  const clearCredential = useAuthStore((s) => s.clearCredential);
-  const hasUpdate = useUpdateStore((s) => s.hasUpdate);
-  const backgroundImage = useSettingsStore((s) => s.backgroundImage);
-  const { t, locale, setLocale } = useTranslation();
-  const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
+  const { theme, setTheme, systemTheme } = useTheme();
 
   const [student, setStudent] = useState<StudentInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -78,13 +61,34 @@ export default function MePage() {
       .finally(() => setLoading(false));
   }, [credential]);
 
-  function handleLogout() {
-    setLogoutDialogOpen(false);
-    clearCredential();
-    resetSDK();
-    toast.success(t("app.logout"));
-    router.replace("/login");
+  const isSystem = theme === "system";
+  const effectiveTheme = isSystem ? systemTheme : theme;
+
+  function handleThemeToggle() {
+    if (isSystem) {
+      setTheme("light");
+    } else {
+      setTheme(theme === "light" ? "dark" : "light");
+    }
   }
+
+  useMobileHeaderRight(
+    mounted ? (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={handleThemeToggle}
+        aria-label={t("app.theme")}
+      >
+        {effectiveTheme === "dark" ? (
+          <Moon className="size-4" />
+        ) : (
+          <Sun className="size-4" />
+        )}
+      </Button>
+    ) : null,
+    [mounted, effectiveTheme, t]
+  );
 
   async function handleRelogin() {
     const limit = checkRateLimit();
@@ -113,6 +117,7 @@ export default function MePage() {
     } catch {
       // fall through
     }
+    const clearCredential = useAuthStore.getState().clearCredential;
     clearCredential();
     resetSDK();
     router.replace("/login");
@@ -170,7 +175,7 @@ export default function MePage() {
           <CardContent className="flex flex-col py-1">
             {academicLinks
               .filter((item) => !item.mobileOnly)
-              .map((item, idx, arr) => (
+              .map((item, idx) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -204,54 +209,14 @@ export default function MePage() {
 
       <Section title={t("me.sectionPreferences")}>
         <Card>
-          <CardContent className="flex flex-col gap-4 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm">{t("app.theme")}</span>
-              <ToggleGroup
-                type="single"
-                value={mounted ? theme ?? "" : ""}
-                onValueChange={(v) => v && setTheme(v)}
-                variant="outline"
-                size="sm"
-              >
-                <ToggleGroupItem value="light" aria-label={t("app.themeLight")}>
-                  <Sun className="size-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="dark" aria-label={t("app.themeDark")}>
-                  <Moon className="size-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="system" aria-label={t("app.themeSystem")}>
-                  <Monitor className="size-4" />
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm">{t("app.language")}</span>
-              <ToggleGroup
-                type="single"
-                value={locale}
-                onValueChange={(v) => v && setLocale(v as "zh" | "en")}
-                variant="outline"
-                size="sm"
-              >
-                <ToggleGroupItem value="zh">中文</ToggleGroupItem>
-                <ToggleGroupItem value="en">EN</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+          <CardContent className="flex flex-col py-1">
             <Link
-              href="/dashboard/me/background"
-              className="flex items-center justify-between gap-3 py-1 transition-colors active:opacity-70"
+              href="/dashboard/me/settings"
+              className="flex items-center gap-3 py-3 transition-colors active:bg-muted/60"
             >
-              <span className="text-sm">{t("app.backgroundImage")}</span>
-              <div className="flex items-center gap-2">
-                {backgroundImage && (
-                  <div
-                    className="size-8 rounded-md border bg-cover bg-center"
-                    style={{ backgroundImage: `url(${backgroundImage})` }}
-                  />
-                )}
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </div>
+              <Settings className="size-5 shrink-0 text-muted-foreground" />
+              <span className="flex-1 text-sm">{t("me.settings")}</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
           </CardContent>
         </Card>
@@ -269,14 +234,6 @@ export default function MePage() {
               <span className="flex-1 text-left text-sm">{t("app.relogin")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </button>
-            <button
-              type="button"
-              onClick={() => setLogoutDialogOpen(true)}
-              className="flex items-center gap-3 border-t border-border py-3 text-destructive transition-colors active:bg-destructive/10"
-            >
-              <LogOut className="size-5 shrink-0" />
-              <span className="flex-1 text-left text-sm">{t("app.logout")}</span>
-            </button>
           </CardContent>
         </Card>
       </Section>
@@ -287,38 +244,13 @@ export default function MePage() {
           className="relative text-primary underline underline-offset-2"
         >
           {t("about.title")}
-          {hasUpdate && (
-            <span className="absolute -top-1 -right-2 size-2 rounded-full bg-destructive" />
-          )}
         </Link>
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground">
             v{APP_VERSION} · {APP_BUILD}
           </span>
-          {hasUpdate && (
-            <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-              {t("me.updateAvailable")}
-            </Badge>
-          )}
         </div>
       </div>
-
-      <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("app.logout")}</DialogTitle>
-            <DialogDescription>{t("logout.confirm")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setLogoutDialogOpen(false)}>
-              {t("logout.cancel")}
-            </Button>
-            <Button variant="destructive" onClick={handleLogout}>
-              {t("app.logout")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuthStore } from "@/lib/auth-store";
+import { useSettingsStore } from "@/lib/settings-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   loadRememberedCredentials,
@@ -109,7 +110,8 @@ export default function LoginPage() {
           clearRememberedCredentials();
         }
         toast.success(t("login.loginSuccess"));
-        router.replace("/dashboard");
+        const landing = useSettingsStore.getState().defaultLandingPage;
+        router.replace(landing === "schedule" ? "/dashboard/schedule/" : "/dashboard");
         return;
       }
 
@@ -141,7 +143,8 @@ export default function LoginPage() {
             clearRememberedCredentials();
           }
           toast.success(t("login.loginSuccess"));
-          router.replace("/dashboard");
+          const landing = useSettingsStore.getState().defaultLandingPage;
+          router.replace(landing === "schedule" ? "/dashboard/schedule/" : "/dashboard");
         } catch (err) {
           if (err instanceof Error) {
             toast.error(err.message || t("login.errorMfaVerifyFailed"));

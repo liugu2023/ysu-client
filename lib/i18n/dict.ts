@@ -48,6 +48,14 @@ export const zh = {
     sectionPreferences: "偏好设置",
     sectionAccount: "账户",
     updateAvailable: "有新版本",
+    settings: "设置",
+  },
+  settings: {
+    title: "设置",
+    startupPage: "启动页面",
+    startupOverview: "总览",
+    startupSchedule: "课表",
+    themeAuto: "跟随系统",
   },
   about: {
     title: "关于",
@@ -543,6 +551,14 @@ export const en = {
     sectionPreferences: "Preferences",
     sectionAccount: "Account",
     updateAvailable: "Update available",
+    settings: "Settings",
+  },
+  settings: {
+    title: "Settings",
+    startupPage: "Startup Page",
+    startupOverview: "Overview",
+    startupSchedule: "Schedule",
+    themeAuto: "Follow System",
   },
   about: {
     title: "About",

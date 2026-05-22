@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 export type CardStyle = "solid" | "translucent" | "glass";
 export type BackgroundStyle = "overlay" | "blur-overlay";
+export type LandingPage = "overview" | "schedule";
 
 interface SettingsState {
   updateMirror: string;
@@ -12,6 +13,7 @@ interface SettingsState {
   backgroundBlurAmount: number;
   cardStyle: CardStyle;
   cardOpacity: number;
+  defaultLandingPage: LandingPage;
   hasHydrated: boolean;
   setUpdateMirror: (mirror: string) => void;
   setBackgroundImage: (image: string) => void;
@@ -20,6 +22,7 @@ interface SettingsState {
   setBackgroundBlurAmount: (amount: number) => void;
   setCardStyle: (style: CardStyle) => void;
   setCardOpacity: (opacity: number) => void;
+  setDefaultLandingPage: (page: LandingPage) => void;
   setHasHydrated: (v: boolean) => void;
 }
 
@@ -33,6 +36,7 @@ export const useSettingsStore = create<SettingsState>()(
       backgroundBlurAmount: 20,
       cardStyle: "solid",
       cardOpacity: 100,
+      defaultLandingPage: "overview",
       hasHydrated: false,
       setUpdateMirror: (updateMirror) => set({ updateMirror }),
       setBackgroundImage: (backgroundImage) => set({ backgroundImage }),
@@ -41,6 +45,7 @@ export const useSettingsStore = create<SettingsState>()(
       setBackgroundBlurAmount: (backgroundBlurAmount) => set({ backgroundBlurAmount }),
       setCardStyle: (cardStyle) => set({ cardStyle }),
       setCardOpacity: (cardOpacity) => set({ cardOpacity }),
+      setDefaultLandingPage: (defaultLandingPage) => set({ defaultLandingPage }),
       setHasHydrated: (v) => set({ hasHydrated: v }),
     }),
     {

@@ -87,6 +87,7 @@ export default function DashboardLayout({
     "/dashboard/me/student": t("app.studentInfo"),
     "/dashboard/me/gpa": t("app.gpa"),
     "/dashboard/me/background": t("app.backgroundSettings"),
+    "/dashboard/me/settings": t("settings.title"),
     "/dashboard/me/about": t("about.title"),
   };
   const pageTitle = titleByPath[pathname] ?? t("app.name");
