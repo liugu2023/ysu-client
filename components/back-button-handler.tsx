@@ -14,8 +14,10 @@ const PRIMARY_ROUTES = [
   "/dashboard/me",
 ];
 
-/** Routes that belong to the "Me" tab on mobile; back button returns to /dashboard/me. */
-const ME_SUB_ROUTES = ["/dashboard/exams", "/dashboard/training-plan"];
+/** Secondary anchor pages with fixed back targets. */
+const SECONDARY_BACK_TARGETS: Record<string, string> = {
+  "/dashboard/me/settings": "/dashboard/me",
+};
 
 function normalizePath(path: string): string {
   return path.endsWith("/") && path !== "/" ? path.slice(0, -1) : path;
@@ -48,23 +50,14 @@ export function BackButtonHandler() {
         return;
       }
 
-      // Sub-routes of "Me" tab that have sidebar entries on tablet.
-      // On both phone and tablet, back returns to /dashboard/me.
-      if (ME_SUB_ROUTES.includes(currentPath)) {
-        router.replace("/dashboard/me");
+      const secondaryBack = SECONDARY_BACK_TARGETS[currentPath];
+      if (secondaryBack) {
+        router.replace(secondaryBack);
         return;
       }
 
-      // Sort by length descending so longer prefixes match first.
-      const sorted = [...PRIMARY_ROUTES].sort((a, b) => b.length - a.length);
-      for (const primary of sorted) {
-        if (currentPath.startsWith(primary + "/")) {
-          router.replace(primary);
-          return;
-        }
-      }
-
-      router.replace("/dashboard");
+      // All other pages simply go back through history.
+      router.back();
     }).then((handle) => {
       listenerHandle = handle;
     });
