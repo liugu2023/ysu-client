@@ -113,7 +113,7 @@ export function UpdateDialog() {
         <li className="text-sm">{children}</li>
       ),
       a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
-        <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+        <a href={href} className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">
           {children}
         </a>
       ),
