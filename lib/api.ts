@@ -38,6 +38,34 @@ import type {
   StudentSignResult,
 } from "./types";
 import { useAuthStore } from "./auth-store";
+import {
+  IS_DEMO,
+  mockStudentInfo,
+  mockGrades,
+  mockGpaStats,
+  mockGradeStatistics,
+  mockGradeDistribution,
+  mockGradeRanking,
+  mockSchedule,
+  mockClassPeriods,
+  mockTermCalendar,
+  mockCurrentWeek,
+  mockExams,
+  mockTrainingPlan,
+  mockAcademicCompletion,
+  mockAcademicWarnings,
+  mockEvaluationTypes,
+  mockPendingEvaluations,
+  mockEvaluationDetail,
+  mockCurrentLesson,
+  mockSigninDetail,
+  mockStudentSigninStatus,
+  mockStudentSignResult,
+  getDemoStep1Response,
+  getDemoLoginResponse,
+  getDemoStatusResponse,
+  getDemoMFAChallenge,
+} from "./demo-data";
 import { resetSDK, persistJWXTSession } from "./sdk";
 import {
   checkCaptchaNeeded as _checkCaptchaNeeded,
@@ -139,18 +167,23 @@ function mapSdkError(e: unknown): Error {
 // ── Auth ────────────────────────────────────────────────
 
 export async function prepareLogin(): Promise<void> {
+  if (IS_DEMO) return;
   return _prepareLogin();
 }
 
-export async function checkCaptchaNeeded(username: string): Promise<boolean> {
+export async function checkCaptchaNeeded(_username: string): Promise<boolean> {
+  if (IS_DEMO) return false;
   try {
-    return await _checkCaptchaNeeded(username);
+    return await _checkCaptchaNeeded(_username);
   } catch {
     return false;
   }
 }
 
 export async function loginStep1(payload: Step1Request): Promise<Step1Response> {
+  if (IS_DEMO) {
+    return getDemoStep1Response(payload.username);
+  }
   try {
     if (!payload.skip_rate_limit) {
       const limit = checkRateLimit();
@@ -188,6 +221,9 @@ export async function requestMFACode(
   payload: MFARequestCodeRequest,
   _credential?: string,
 ): Promise<MFAChallengeResponse> {
+  if (IS_DEMO) {
+    return getDemoMFAChallenge(payload.username);
+  }
   try {
     const challenge = await _requestMFACode(
       payload.username,
@@ -208,6 +244,11 @@ export async function submitMFACode(
   payload: MFASubmitRequest,
   _credential?: string,
 ): Promise<LoginResponse> {
+  if (IS_DEMO) {
+    const resp = getDemoLoginResponse();
+    useAuthStore.getState().setCredential(resp.credential, payload.username);
+    return resp;
+  }
   try {
     const challenge = {
       method: payload.method as "sms" | "cpdaily",
@@ -226,6 +267,11 @@ export async function submitMFACode(
 }
 
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
+  if (IS_DEMO) {
+    const resp = getDemoLoginResponse();
+    useAuthStore.getState().setCredential(resp.credential, payload.username);
+    return resp;
+  }
   const step1 = await loginStep1({
     username: payload.username,
     password: payload.password,
@@ -249,6 +295,9 @@ export async function login(payload: LoginRequest): Promise<LoginResponse> {
 }
 
 export async function checkAuthStatus(_credential?: string): Promise<StatusResponse> {
+  if (IS_DEMO) {
+    return getDemoStatusResponse();
+  }
   try {
     const authenticated = await _isAuthenticated();
     return { authenticated };
@@ -276,6 +325,7 @@ async function withJWXT<T>(fn: () => Promise<T>): Promise<T> {
 // ── Student Info ────────────────────────────────────────
 
 export async function getStudentInfo(_credential?: string): Promise<StudentInfo> {
+  if (IS_DEMO) return mockStudentInfo;
   return withJWXT(async () => {
     const info = await _queryStudentInfo();
     return {
@@ -312,6 +362,16 @@ export async function getGrades(
     page_number?: number;
   },
 ): Promise<Grade[]> {
+  if (IS_DEMO) {
+    let rows = [...mockGrades];
+    if (params?.term) {
+      rows = rows.filter((r) => r.term === params.term);
+    }
+    if (params?.course_name) {
+      rows = rows.filter((r) => r.course_name?.includes(params.course_name!));
+    }
+    return rows;
+  }
   return withJWXT(async () => {
     const rows = await _queryGrades({
       term: params?.term,
@@ -350,6 +410,7 @@ export async function getGPAStats(
   _credential: string,
   student_id?: string,
 ): Promise<GPAStats> {
+  if (IS_DEMO) return mockGpaStats;
   return withJWXT(async () => {
     const stats = await _queryGpaStats({
       studentId: student_id,
@@ -377,6 +438,7 @@ export async function getGradeStatistics(
   _credential: string,
   params?: { class_id?: string; course_code?: string; term?: string },
 ): Promise<GradeStatistics> {
+  if (IS_DEMO) return mockGradeStatistics;
   return withJWXT(async () => {
     const s = await _queryGradeStatistics({
       term: params?.term,
@@ -399,6 +461,7 @@ export async function getGradeDistribution(
   _credential: string,
   params?: { class_id?: string; course_code?: string; term?: string },
 ): Promise<GradeDistribution[]> {
+  if (IS_DEMO) return mockGradeDistribution;
   return withJWXT(async () => {
     const rows = await _queryGradeDistribution({
       term: params?.term,
@@ -426,6 +489,7 @@ export async function getGradeRanking(
     student_id?: string;
   },
 ): Promise<GradeRanking> {
+  if (IS_DEMO) return mockGradeRanking;
   return withJWXT(async () => {
     const r = await _queryGradeRanking({
       term: params?.term,
@@ -453,6 +517,7 @@ export async function getSchedule(
   _credential: string,
   term?: string,
 ): Promise<Course[]> {
+  if (IS_DEMO) return mockSchedule;
   return withJWXT(async () => {
     const rows = await _querySchedule({ term });
     return rows.map(mapCourse);
@@ -464,6 +529,7 @@ export async function getExperimentalSchedule(
   term?: string,
   course_category = "all",
 ): Promise<Course[]> {
+  if (IS_DEMO) return [];
   return withJWXT(async () => {
     const rows = await _queryScheduleExperimental({
       term,
@@ -478,6 +544,7 @@ export async function getUnscheduledCourses(
   term?: string,
   course_category = "all",
 ): Promise<Course[]> {
+  if (IS_DEMO) return [];
   return withJWXT(async () => {
     const rows = await _queryUnscheduledCourses({
       term,
@@ -524,6 +591,7 @@ function mapCourse(r: {
 }
 
 export async function getClassPeriods(_credential?: string): Promise<ClassPeriod[]> {
+  if (IS_DEMO) return mockClassPeriods;
   return withJWXT(async () => {
     const rows = await _queryClassPeriods();
     return rows.map((r) => ({
@@ -540,6 +608,7 @@ export async function getTermCalendar(
   _credential: string,
   term?: string,
 ): Promise<TermCalendar> {
+  if (IS_DEMO) return mockTermCalendar;
   return withJWXT(async () => {
     const c = await _queryTermCalendar({ term });
     return {
@@ -557,6 +626,7 @@ export async function getCurrentWeek(
   term?: string,
   date?: string,
 ): Promise<CurrentWeek> {
+  if (IS_DEMO) return mockCurrentWeek;
   return withJWXT(async () => {
     const w = await _queryCurrentWeek({ term, date });
     return {
@@ -574,6 +644,7 @@ export async function getExams(
   _credential: string,
   term?: string,
 ): Promise<Exam[]> {
+  if (IS_DEMO) return mockExams;
   return withJWXT(async () => {
     const rows = await _queryExams({ term });
     return rows.map((r) => ({
@@ -593,6 +664,7 @@ export async function getTrainingPlan(
   _credential: string,
   params?: { page_size?: number; page_number?: number },
 ): Promise<TrainingPlan[]> {
+  if (IS_DEMO) return mockTrainingPlan;
   return withJWXT(async () => {
     const rows = await _queryTrainingPlan({
       pageSize: params?.page_size ?? 500,
@@ -613,6 +685,7 @@ export async function getTrainingPlan(
 export async function getAcademicCompletion(
   _credential: string,
 ): Promise<AcademicCompletion> {
+  if (IS_DEMO) return mockAcademicCompletion;
   return withJWXT(async () => {
     const c = await _queryAcademicCompletion();
     return {
@@ -628,6 +701,7 @@ export async function getAcademicCompletion(
 export async function getAcademicWarnings(
   _credential: string,
 ): Promise<AcademicWarning[]> {
+  if (IS_DEMO) return mockAcademicWarnings;
   return withJWXT(async () => {
     const rows = await _queryAcademicWarnings();
     return rows.map((r) => ({
@@ -645,6 +719,7 @@ export async function getEvaluationTypes(
   _credential: string,
   term?: string,
 ): Promise<EvaluationType[]> {
+  if (IS_DEMO) return mockEvaluationTypes;
   return withJWXT(async () => {
     const rows = await _queryEvaluationTypes({ term });
     return rows.map((r) => ({
@@ -660,6 +735,7 @@ export async function getPendingEvaluations(
   eval_type: string,
   term?: string,
 ): Promise<EvaluationTask[]> {
+  if (IS_DEMO) return mockPendingEvaluations;
   return withJWXT(async () => {
     const rows = await _queryPendingEvaluations(eval_type, { term });
     return rows.map((r) => ({
@@ -690,6 +766,7 @@ export async function getEvaluationDetail(
   eval_type: string,
   sequence = 1,
 ): Promise<EvaluationDetail> {
+  if (IS_DEMO) return mockEvaluationDetail;
   return withJWXT(async () => {
     const d = await _getEvaluationDetail(group_no, eval_type, { sequence });
     return {
@@ -722,6 +799,7 @@ export async function calculateScore(
   _credential: string,
   payload: CalculateScoreRequest,
 ): Promise<Record<string, unknown>> {
+  if (IS_DEMO) return { score: 95 };
   return withJWXT(async () => {
     return _calculateEvaluationScore(
       payload.group_no,
@@ -747,6 +825,7 @@ export async function submitEvaluation(
   _credential: string,
   payload: SubmitEvaluationRequest,
 ): Promise<{ detail: string }> {
+  if (IS_DEMO) return { detail: "ok" };
   return withJWXT(async () => {
     await _submitEvaluation(
       payload.group_no,
@@ -783,6 +862,7 @@ export async function getCurrentLesson(
     end_node: number;
   },
 ): Promise<CurrentLesson> {
+  if (IS_DEMO) return mockCurrentLesson;
   try {
     const result = await _queryCurrentLesson({
       teachClassId: params.teach_class_id,
@@ -822,6 +902,7 @@ export async function getSigninDetail(
     title?: string;
   },
 ): Promise<SigninActivityDetail> {
+  if (IS_DEMO) return mockSigninDetail;
   try {
     const result = await _querySigninDetail({
       activityId: params.activity_id,
@@ -848,6 +929,7 @@ export async function getStudentSigninStatus(
     title?: string;
   },
 ): Promise<StudentSigninStatus> {
+  if (IS_DEMO) return mockStudentSigninStatus;
   try {
     const result = await _queryStudentSigninStatus({
       activityId: params.activity_id,
@@ -875,6 +957,7 @@ export async function doStudentSign(
     code?: string;
   },
 ): Promise<StudentSignResult> {
+  if (IS_DEMO) return mockStudentSignResult;
   try {
     const result = await _studentSign({
       activityId: params.activity_id,

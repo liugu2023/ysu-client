@@ -1,6 +1,7 @@
 import { CapacitorUpdater } from "@capgo/capacitor-updater";
 import { App } from "@capacitor/app";
 import { APP_VERSION } from "./version";
+import { IS_DEMO } from "./demo-data";
 
 export interface UpdateInfo {
   available: boolean;
@@ -89,6 +90,7 @@ export async function checkForUpdate(
   auto = false,
   mirrorPrefix = OFFICIAL_BASE,
 ): Promise<UpdateInfo> {
+  if (IS_DEMO) return EMPTY_RESULT;
   if (auto) {
     const last = localStorage.getItem(LAST_CHECK_KEY);
     if (last && Date.now() - Number(last) < CHECK_COOLDOWN_MS) {

@@ -23,9 +23,18 @@ import {
   getJar as getMobileJar,
 } from "./jwmobile";
 import { useAuthStore } from "./auth-store";
+import { IS_DEMO, getDemoCredential, DEMO_USERNAME } from "./demo-data";
 
 /** 从 auth-store 恢复 CAS 凭据、JWXT 会话和 mobile 会话到各自的 jar。 */
 export async function initSDK(): Promise<void> {
+  if (IS_DEMO) {
+    const state = useAuthStore.getState();
+    if (!state.isAuthenticated) {
+      state.setCredential(getDemoCredential(), DEMO_USERNAME);
+    }
+    return;
+  }
+
   // Restore CASTGC to CapacitorHttp system cookie store (for native platforms)
   await restoreCASCookies();
 
