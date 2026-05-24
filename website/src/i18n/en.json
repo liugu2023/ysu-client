@@ -53,7 +53,10 @@
     "releaseDate": "Release Date",
     "changelogLink": "View Changelog",
     "githubFallback": "GitHub Releases",
-    "systemRequirements": "Requires: Android System WebView v111+"
+    "systemRequirements": "Requires: Android System WebView v111+",
+    "demoTitle": "Want to try first?",
+    "demoDesc": "Download the demo version to experience all features without a campus account",
+    "demoBtn": "Download Demo"
   },
   "footer": {
     "disclaimer": "This is a third-party client, not affiliated with Yanshan University.",

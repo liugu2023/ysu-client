@@ -53,7 +53,10 @@
     "releaseDate": "发布日期",
     "changelogLink": "查看更新日志",
     "githubFallback": "GitHub Releases",
-    "systemRequirements": "系统要求：Android System WebView v111+"
+    "systemRequirements": "系统要求：Android System WebView v111+",
+    "demoTitle": "想先试试？",
+    "demoDesc": "下载演示版，无需校园账号即可体验全部功能",
+    "demoBtn": "下载演示版"
   },
   "footer": {
     "disclaimer": "本应用为第三方客户端，与燕山大学官方无任何关联。",
