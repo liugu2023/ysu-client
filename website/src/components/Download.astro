@@ -1,5 +1,5 @@
 ---
-import { Code, FileText } from 'lucide-react';
+import { Code, FileText, Download } from 'lucide-react';
 import DownloadDialog from './DownloadDialog';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -76,6 +76,20 @@ try {
       <p class="mt-6 text-xs text-muted-foreground">
         {t.download.systemRequirements}
       </p>
+
+      <div class="mt-10 rounded-2xl border border-border/60 bg-muted/30 p-6">
+        <h3 class="text-lg font-semibold">{t.download.demoTitle}</h3>
+        <p class="mt-1 text-sm text-muted-foreground">{t.download.demoDesc}</p>
+        <div class="mt-4">
+          <a
+            href="/updates/app-release-demo.apk"
+            class="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 hover:shadow-xl"
+          >
+            <Download className="w-4 h-4" />
+            {t.download.demoBtn}
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </section>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, BookOpen, Calendar, ClipboardList, BarChart3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutDashboard, Calendar, BookOpen, ClipboardCheck, User, Settings } from 'lucide-react';
 
 interface Slide {
   icon: React.ComponentType<{ className?: string }>;
@@ -12,36 +12,52 @@ interface Slide {
 
 const slides: Slide[] = [
   {
-    icon: BookOpen,
-    title: '查成绩',
-    description: '按学期筛选，查看统计、分布和排名',
-    src: '/images/screenshots/grades-light.svg',
-    srcDark: '/images/screenshots/grades-dark.svg',
-    alt: '成绩查询',
+    icon: LayoutDashboard,
+    title: '总览',
+    description: '今日课程、考试提醒、快捷入口一目了然',
+    src: '/images/screenshots/overview.jpg',
+    srcDark: '/images/screenshots/overview-dark.jpg',
+    alt: '总览',
   },
   {
     icon: Calendar,
     title: '看课表',
     description: '合并理论课与实验课，按周切换，实时高亮当前课程',
-    src: '/images/screenshots/schedule-light.svg',
-    srcDark: '/images/screenshots/schedule-dark.svg',
+    src: '/images/screenshots/schedule.jpg',
+    srcDark: '/images/screenshots/schedule-dark.jpg',
     alt: '课程表',
   },
   {
-    icon: ClipboardList,
-    title: '查考试',
-    description: '按学期查看考试安排',
-    src: '/images/screenshots/exams-light.svg',
-    srcDark: '/images/screenshots/exams-dark.svg',
-    alt: '考试安排',
+    icon: BookOpen,
+    title: '查成绩',
+    description: '按学期筛选，查看统计、分布和排名',
+    src: '/images/screenshots/grades.jpg',
+    srcDark: '/images/screenshots/grades-dark.jpg',
+    alt: '成绩查询',
   },
   {
-    icon: BarChart3,
-    title: '看绩点',
-    description: '学分和绩点一目了然',
-    src: '/images/screenshots/gpa-light.svg',
-    srcDark: '/images/screenshots/gpa-dark.svg',
-    alt: '绩点统计',
+    icon: ClipboardCheck,
+    title: '评教',
+    description: '一键自动填写最高分，批量完成学生评教',
+    src: '/images/screenshots/evaluation.jpg',
+    srcDark: '/images/screenshots/evaluation-dark.jpg',
+    alt: '学生评教',
+  },
+  {
+    icon: User,
+    title: '我的',
+    description: '个人信息、绩点统计、培养方案一站式查看',
+    src: '/images/screenshots/me.jpg',
+    srcDark: '/images/screenshots/me-dark.jpg',
+    alt: '我的',
+  },
+  {
+    icon: Settings,
+    title: '设置',
+    description: '主题切换、背景设置、语言选择等个性化配置',
+    src: '/images/screenshots/settings.jpg',
+    srcDark: '/images/screenshots/settings-dark.jpg',
+    alt: '设置',
   },
 ];
 
