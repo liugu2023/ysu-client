@@ -65,6 +65,7 @@ import {
   getDemoLoginResponse,
   getDemoStatusResponse,
   getDemoMFAChallenge,
+  getMockCurrentLesson,
 } from "./demo-data";
 import { resetSDK, persistJWXTSession } from "./sdk";
 import {
@@ -529,7 +530,7 @@ export async function getExperimentalSchedule(
   term?: string,
   course_category = "all",
 ): Promise<Course[]> {
-  if (IS_DEMO) return [];
+  if (IS_DEMO) return mockSchedule;
   return withJWXT(async () => {
     const rows = await _queryScheduleExperimental({
       term,
@@ -862,7 +863,9 @@ export async function getCurrentLesson(
     end_node: number;
   },
 ): Promise<CurrentLesson> {
-  if (IS_DEMO) return mockCurrentLesson;
+  if (IS_DEMO) {
+    return getMockCurrentLesson(params.schedule_id);
+  }
   try {
     const result = await _queryCurrentLesson({
       teachClassId: params.teach_class_id,
