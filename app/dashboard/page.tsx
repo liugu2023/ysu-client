@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -11,10 +10,10 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useSettingsStore } from "@/lib/settings-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { getStudentInfo, getCurrentWeek, getGPAStats, getExperimentalSchedule, getExams, getClassPeriods } from "@/lib/api";
-import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
-import { useRefreshStore } from "@/lib/refresh-store";
+import { useCachedData, LONG_TTL_MS } from "@/lib/use-cached-data";
 import { cn } from "@/lib/utils";
 import { isCourseActiveInWeek, buildSectionTimeMap, isCoursePast } from "@/app/dashboard/schedule/schedule-utils";
+import { syncScheduleToWidget, syncExamsToWidget } from "@/lib/widget-bridge";
 import type { StudentInfo, CurrentWeek, GPAStats, Course, Exam, ClassPeriod } from "@/lib/types";
 import { Calendar, GraduationCap, BarChart3, Clock, BookOpen, Eye, EyeOff } from "lucide-react";
 
@@ -64,99 +63,78 @@ export default function DashboardPage() {
   const credential = useAuthStore((s) => s.credential);
   const avatarImage = useSettingsStore((s) => s.avatarImage);
   const { t } = useTranslation();
-  const [student, setStudent] = useState<StudentInfo | null>(null);
-  const [currentWeek, setCurrentWeek] = useState<CurrentWeek | null>(null);
-  const [gpa, setGpa] = useState<GPAStats | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [periods, setPeriods] = useState<ClassPeriod[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showGPA, setShowGPA] = useState(false);
 
+  const student = useCachedData(["student", credential], {
+    fetch: () => withRetry(() => getStudentInfo()),
+    ttl: LONG_TTL_MS,
+  });
+
+  const currentWeek = useCachedData(["week", credential], {
+    fetch: () => withRetry(() => getCurrentWeek(credential!)),
+    fallback: () => null,
+  });
+
+  const gpa = useCachedData(["gpa", credential], {
+    fetch: () => withRetry(() => getGPAStats(credential!)),
+    fallback: () => null,
+  });
+
+  const courses = useCachedData(["schedule", credential], {
+    fetch: () => withRetry(() => getExperimentalSchedule(credential!, undefined, "all")),
+    fallback: () => null,
+  });
+
+  const exams = useCachedData(["exams", credential], {
+    fetch: () => withRetry(() => getExams(credential!)),
+    fallback: () => null,
+  });
+
+  const periodsRaw = useCachedData(["periods", credential], {
+    fetch: () => withRetry(() => getClassPeriods()),
+    fallback: () => null,
+  });
+
+  const periods = useMemo(() => {
+    if (!periodsRaw.data) return [];
+    return periodsRaw.data.filter((x) => x.is_in_use).sort((a, b) => a.section - b.section);
+  }, [periodsRaw.data]);
+
+  const widgetSyncReminderHours = useSettingsStore((s) => s.widgetSyncReminderHours);
+
+  // Sync courses to widget when fresh data arrives
+  const activeCoursesForWidget = useMemo(() => {
+    if (!currentWeek.data || !courses.data) return null;
+    return courses.data.filter((c) => isCourseActiveInWeek(c, currentWeek.data!.week));
+  }, [courses.data, currentWeek.data]);
+
   useEffect(() => {
-    if (!credential) return;
-
-    const cachedStudent = cacheGet<StudentInfo>(cacheKey(["student", credential]));
-    const cachedWeek = cacheGet<CurrentWeek>(cacheKey(["week", credential]));
-    const cachedGpa = cacheGet<GPAStats>(cacheKey(["gpa", credential]));
-    const cachedCourses = cacheGet<Course[]>(cacheKey(["schedule", credential]));
-    const cachedExams = cacheGet<Exam[]>(cacheKey(["exams", credential]));
-    const cachedPeriods = cacheGet<ClassPeriod[]>(cacheKey(["periods", credential]));
-
-    if (cachedStudent) setStudent(cachedStudent);
-    if (cachedWeek) setCurrentWeek(cachedWeek);
-    if (cachedGpa) setGpa(cachedGpa);
-    if (cachedCourses) setCourses(cachedCourses);
-    if (cachedExams) setExams(cachedExams);
-    if (cachedPeriods) setPeriods(cachedPeriods);
-
-    let refreshing = false;
-    const hasCache = cachedStudent || cachedWeek || cachedGpa || cachedCourses || cachedExams || cachedPeriods;
-    if (hasCache) {
-      setLoading(false);
-      useRefreshStore.getState().start();
-      refreshing = true;
+    if (activeCoursesForWidget) {
+      syncScheduleToWidget(activeCoursesForWidget, currentWeek.data, periods, widgetSyncReminderHours).catch(() => {});
     }
+  }, [activeCoursesForWidget, currentWeek.data, periods, widgetSyncReminderHours]);
 
-    async function load() {
-      try {
-        const [s, w, g, c, e, p] = await Promise.all([
-          withRetry(() => getStudentInfo(credential!)),
-          withRetry(() => getCurrentWeek(credential!)).catch(() => null),
-          withRetry(() => getGPAStats(credential!)).catch(() => null),
-          withRetry(() => getExperimentalSchedule(credential!, undefined, "all")).catch(() => null),
-          withRetry(() => getExams(credential!)).catch(() => null),
-          withRetry(() => getClassPeriods(credential!)).catch(() => null),
-        ]);
-        setStudent(s);
-        if (w !== null) {
-          setCurrentWeek(w);
-          cacheSet(cacheKey(["week", credential!]), w);
-        }
-        if (g !== null) {
-          setGpa(g);
-          cacheSet(cacheKey(["gpa", credential!]), g);
-        }
-        if (c !== null) {
-          setCourses(c);
-          cacheSet(cacheKey(["schedule", credential!]), c);
-        }
-        if (e !== null) {
-          setExams(e);
-          cacheSet(cacheKey(["exams", credential!]), e);
-        }
-        if (p !== null) {
-          const activePeriods = p.filter((x) => x.is_in_use).sort((a, b) => a.section - b.section);
-          setPeriods(activePeriods);
-          cacheSet(cacheKey(["periods", credential!]), activePeriods);
-        }
-        cacheSet(cacheKey(["student", credential!]), s);
-        useRefreshStore.getState().markFresh();
-      } catch (err) {
-        if (hasCache) {
-          useRefreshStore.getState().markStale();
-          toast.error(t("app.networkError"));
-        } else {
-          toast.error((err as Error).message || t("app.updating"));
-        }
-      } finally {
-        setLoading(false);
-        if (refreshing) useRefreshStore.getState().end();
-      }
+  // Sync exams to widget when fresh data arrives
+  useEffect(() => {
+    if (exams.data && exams.data.length > 0) {
+      syncExamsToWidget(exams.data, widgetSyncReminderHours).catch(() => {});
     }
-    load();
-  }, [credential, t]);
+  }, [exams.data, widgetSyncReminderHours]);
+
+  const hooks = [student, currentWeek, gpa, courses, exams, periodsRaw];
+  const anyLoading = hooks.some((h) => h.loading);
+  const hasAnyData = hooks.some((h) => h.data != null);
 
   const todayCourses = useMemo(() => {
-    if (!currentWeek) return [];
-    return courses
-      .filter((c) => isCourseActiveToday(c, currentWeek.week, currentWeek.weekday))
+    if (!currentWeek.data) return [];
+    return (courses.data ?? [])
+      .filter((c) => isCourseActiveToday(c, currentWeek.data!.week, currentWeek.data!.weekday))
       .sort((a, b) => a.start_section - b.start_section);
-  }, [courses, currentWeek]);
+  }, [courses.data, currentWeek.data]);
 
   const upcomingExams = useMemo(() => {
     const now = new Date();
-    return exams
+    return (exams.data ?? [])
       .filter((e) => {
         const end = getExamEndTime(e);
         if (!end) return false;
@@ -173,7 +151,7 @@ export default function DashboardPage() {
         return ha - hb;
       })
       .slice(0, 3);
-  }, [exams]);
+  }, [exams.data]);
 
   const [nowMinutes, setNowMinutes] = useState(() => {
     const now = new Date();
@@ -203,7 +181,7 @@ export default function DashboardPage() {
     return null;
   }, [todayCourses, nowMinutes, timeMap]);
 
-  if (loading) {
+  if (anyLoading && !hasAnyData) {
     return (
       <div className="flex flex-col gap-8">
         <div className="grid gap-6 md:grid-cols-2">
@@ -226,14 +204,14 @@ export default function DashboardPage() {
           <Avatar className="size-14 shrink-0">
             {avatarImage && <AvatarImage src={avatarImage} alt="avatar" />}
             <AvatarFallback className="text-base font-medium">
-              {student?.name ? student.name.slice(-2) : "--"}
+              {student.data?.name ? student.data.name.slice(-2) : "--"}
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <CardTitle className="truncate text-base">{student?.name || "-"}</CardTitle>
-            {student?.department && (
+            <CardTitle className="truncate text-base">{student.data?.name || "-"}</CardTitle>
+            {student.data?.department && (
               <CardDescription className="truncate">
-                {student.department}
+                {student.data.department}
               </CardDescription>
             )}
           </div>
@@ -243,12 +221,12 @@ export default function DashboardPage() {
             <div className="flex items-center gap-1.5">
               <Calendar className="size-3.5 shrink-0 text-primary" />
               <span className="truncate text-sm font-medium">
-                {t("dashboard.currentWeek", { week: currentWeek?.week || "-" })}
+                {t("dashboard.currentWeek", { week: currentWeek.data?.week || "-" })}
               </span>
             </div>
             <span className="truncate text-xs text-muted-foreground">
-              {currentWeek?.weekday ? t(`dashboard.weekdayNames.${currentWeek.weekday}`) : "-"}
-              {currentWeek?.term && ` · ${currentWeek.term}`}
+              {currentWeek.data?.weekday ? t(`dashboard.weekdayNames.${currentWeek.data.weekday}`) : "-"}
+              {currentWeek.data?.term && ` · ${currentWeek.data.term}`}
             </span>
           </div>
           <button
@@ -266,7 +244,7 @@ export default function DashboardPage() {
               )}
             </div>
             <span className="truncate text-base font-semibold tabular-nums">
-              {showGPA ? gpa?.gpa_initial || "-" : "***"}
+              {showGPA ? gpa.data?.gpa_initial || "-" : "***"}
             </span>
           </button>
         </CardContent>
@@ -277,12 +255,12 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center gap-3 pb-2">
             <GraduationCap className="size-6 text-primary shrink-0" />
             <div className="min-w-0">
-              <CardTitle className="text-base truncate">{student?.name || "-"}</CardTitle>
-              <CardDescription className="truncate">{student?.student_id || ""}</CardDescription>
+              <CardTitle className="text-base truncate">{student.data?.name || "-"}</CardTitle>
+              <CardDescription className="truncate">{student.data?.student_id || ""}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground truncate">
-            {student?.department} · {student?.major}
+            {student.data?.department} · {student.data?.major}
           </CardContent>
         </Card>
 
@@ -290,12 +268,12 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center gap-3 pb-2">
             <Calendar className="size-6 text-primary shrink-0" />
             <div>
-              <CardTitle className="text-base">{t("dashboard.currentWeek", { week: currentWeek?.week || "-" })}</CardTitle>
-              <CardDescription>{currentWeek?.weekday ? t(`dashboard.weekdayNames.${currentWeek.weekday}`) : "-"}</CardDescription>
+              <CardTitle className="text-base">{t("dashboard.currentWeek", { week: currentWeek.data?.week || "-" })}</CardTitle>
+              <CardDescription>{currentWeek.data?.weekday ? t(`dashboard.weekdayNames.${currentWeek.data.weekday}`) : "-"}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {currentWeek?.term || ""}
+            {currentWeek.data?.term || ""}
           </CardContent>
         </Card>
 
@@ -304,14 +282,14 @@ export default function DashboardPage() {
             <BarChart3 className="size-6 text-primary shrink-0" />
             <div>
               <CardTitle className="text-base">
-                {showGPA ? gpa?.gpa_initial || "-" : "***"}
+                {showGPA ? gpa.data?.gpa_initial || "-" : "***"}
               </CardTitle>
               <CardDescription>{t("dashboard.gpaInitial")}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             {showGPA
-              ? `${t("dashboard.weightedAvg")} ${gpa?.weighted_avg || "-"} · ${t("dashboard.arithmeticAvg")} ${gpa?.arithmetic_avg || "-"}`
+              ? `${t("dashboard.weightedAvg")} ${gpa.data?.weighted_avg || "-"} · ${t("dashboard.arithmeticAvg")} ${gpa.data?.arithmetic_avg || "-"}`
               : t("dashboard.gpaInitial")
             }
           </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,7 +26,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useMobileHeaderRight } from "@/lib/mobile-header-store";
 import { useRefreshStore } from "@/lib/refresh-store";
 import { getExperimentalSchedule, getClassPeriods, getCurrentWeek } from "@/lib/api";
-import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
+import { cacheGetStale, cacheSet, cacheKey, dedupedFetch } from "@/lib/cache";
+import { useCachedData } from "@/lib/use-cached-data";
 import type { Course, ClassPeriod, CurrentWeek } from "@/lib/types";
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { isCourseActiveInWeek } from "./schedule-utils";
@@ -40,12 +41,19 @@ export default function SchedulePage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [periods, setPeriods] = useState<ClassPeriod[]>([]);
   const [currentWeek, setCurrentWeek] = useState<CurrentWeek | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number>(0);
   const [term, setTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+
+  const periodsHook = useCachedData(["periods", credential], {
+    fetch: () => getClassPeriods(),
+  });
+  const periods = useMemo(() => {
+    if (!periodsHook.data) return [];
+    return periodsHook.data.filter((x) => x.is_in_use).sort((a, b) => a.section - b.section);
+  }, [periodsHook.data]);
 
   const [nowMinutes, setNowMinutes] = useState(() => {
     const now = new Date();
@@ -64,22 +72,26 @@ export default function SchedulePage() {
     setSelectedWeek((w) => Math.max(1, (w || 1) + delta));
   }
 
+  // 用 ref 持有最新的 periods 数据，避免 periods 变化触发 effect 重新执行
+  const periodsRef = useRef(periods);
+  periodsRef.current = periods;
+
   useEffect(() => {
     if (!credential) return;
 
-    const cachedCourses = cacheGet<Course[]>(cacheKey(["schedule", credential]));
-    const cachedPeriods = cacheGet<ClassPeriod[]>(cacheKey(["periods", credential]));
-    const cachedWeek = cacheGet<CurrentWeek>(cacheKey(["week", credential]));
+    const schedKey = cacheKey(["schedule", credential]);
+    const weekKey = cacheKey(["week", credential]);
+    const cachedCourses = cacheGetStale<Course[]>(schedKey);
+    const cachedWeek = cacheGetStale<CurrentWeek>(weekKey);
 
-    if (cachedCourses) setCourses(cachedCourses);
-    if (cachedPeriods) setPeriods(cachedPeriods);
+    if (cachedCourses) setCourses(cachedCourses.data);
     if (cachedWeek) {
-      setCurrentWeek(cachedWeek);
-      if (cachedWeek.week) setSelectedWeek(cachedWeek.week);
+      setCurrentWeek(cachedWeek.data);
+      if (cachedWeek.data.week) setSelectedWeek(cachedWeek.data.week);
     }
 
+    const hasCache = !!(cachedCourses || cachedWeek);
     let refreshing = false;
-    const hasCache = cachedCourses || cachedPeriods || cachedWeek;
     if (hasCache) {
       setLoading(false);
       useRefreshStore.getState().start();
@@ -88,26 +100,23 @@ export default function SchedulePage() {
 
     async function load() {
       try {
-        const [c, p, w] = await Promise.all([
-          getExperimentalSchedule(credential!, undefined, "all"),
-          getClassPeriods(credential!),
-          getCurrentWeek(credential!),
+        const [c, w] = await Promise.all([
+          dedupedFetch(schedKey, () => getExperimentalSchedule(credential!, undefined, "all")),
+          dedupedFetch(weekKey, () => getCurrentWeek(credential!)),
         ]);
         setCourses(c);
-        setPeriods(p.filter((x) => x.is_in_use).sort((a, b) => a.section - b.section));
         setCurrentWeek(w);
         if (w?.week) {
-          const cachedWeekValue = cachedWeek?.week;
+          const cachedWeekValue = cachedWeek?.data.week;
           setSelectedWeek((curr) => {
             if (curr === 0 || curr === cachedWeekValue) return w.week;
             return curr;
           });
         }
-        cacheSet(cacheKey(["schedule", credential!]), c);
-        cacheSet(cacheKey(["periods", credential!]), p.filter((x) => x.is_in_use).sort((a, b) => a.section - b.section));
-        cacheSet(cacheKey(["week", credential!]), w);
+        cacheSet(schedKey, c);
+        cacheSet(weekKey, w);
         const activeCourses = w?.week ? c.filter((course) => isCourseActiveInWeek(course, w.week)) : c;
-        syncScheduleToWidget(activeCourses, w, p.filter((x) => x.is_in_use).sort((a, b) => a.section - b.section), useSettingsStore.getState().widgetSyncReminderHours).catch(() => {});
+        syncScheduleToWidget(activeCourses, w, periodsRef.current, useSettingsStore.getState().widgetSyncReminderHours).catch(() => {});
         useRefreshStore.getState().markFresh();
       } catch (err) {
         if (hasCache) {

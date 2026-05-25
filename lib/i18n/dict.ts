@@ -51,6 +51,8 @@ export const zh = {
     sessionExpired: "会话已过期，请重新登录",
     networkError: "网络连接失败，请检查网络",
     staleDataTooltip: "当前显示缓存数据，刷新失败",
+    cacheStorageFull: "存储空间不足，部分数据无法缓存",
+    cacheStorageFullDesc: "请清理设备存储空间后重试",
   },
   me: {
     profileFallback: "未登录",
@@ -584,6 +586,8 @@ export const en = {
     sessionExpired: "Session expired, please log in again",
     networkError: "Network connection failed, please check your network",
     staleDataTooltip: "Showing cached data, refresh failed",
+    cacheStorageFull: "Storage full, unable to cache data",
+    cacheStorageFullDesc: "Please free up device storage and try again",
   },
   me: {
     profileFallback: "Not signed in",

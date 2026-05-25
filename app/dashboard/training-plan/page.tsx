@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -45,13 +44,7 @@ import {
   getAcademicCompletion,
   getAcademicWarnings,
 } from "@/lib/api";
-import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
-import { useRefreshStore } from "@/lib/refresh-store";
-import type {
-  AcademicCompletion,
-  AcademicWarning,
-  TrainingPlan,
-} from "@/lib/types";
+import { useCachedData } from "@/lib/use-cached-data";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -67,92 +60,48 @@ export default function TrainingPlanPage() {
   const credential = useAuthStore((s) => s.credential);
   const { t } = useTranslation();
 
-  const [plans, setPlans] = useState<TrainingPlan[]>([]);
-  const [completion, setCompletion] = useState<AcademicCompletion | null>(null);
-  const [warnings, setWarnings] = useState<AcademicWarning[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState("");
   const [requiredFilter, setRequiredFilter] = useState(ALL);
   const [termFilter, setTermFilter] = useState(ALL);
   const [groupFilter, setGroupFilter] = useState(ALL);
 
-  useEffect(() => {
-    if (!credential) return;
+  const plans = useCachedData(["training-plan", credential], {
+    fetch: () => getTrainingPlan(credential!),
+  });
 
-    const cachedPlans = cacheGet<TrainingPlan[]>(
-      cacheKey(["training-plan", credential]),
-    );
-    const cachedCompletion = cacheGet<AcademicCompletion>(
-      cacheKey(["academic-completion", credential]),
-    );
-    const cachedWarnings = cacheGet<AcademicWarning[]>(
-      cacheKey(["academic-warnings", credential]),
-    );
+  const completion = useCachedData(["academic-completion", credential], {
+    fetch: () => getAcademicCompletion(credential!),
+    fallback: () => null,
+  });
 
-    if (cachedPlans) setPlans(cachedPlans);
-    if (cachedCompletion) setCompletion(cachedCompletion);
-    if (cachedWarnings) setWarnings(cachedWarnings);
-
-    let refreshing = false;
-    const hasCache = cachedPlans || cachedCompletion || cachedWarnings;
-    if (hasCache) {
-      setLoading(false);
-      useRefreshStore.getState().start();
-      refreshing = true;
-    }
-
-    async function load() {
-      try {
-        const [p, c, w] = await Promise.all([
-          getTrainingPlan(credential!),
-          getAcademicCompletion(credential!).catch(() => null),
-          getAcademicWarnings(credential!).catch(() => []),
-        ]);
-        setPlans(p);
-        setCompletion(c);
-        setWarnings(w);
-        cacheSet(cacheKey(["training-plan", credential!]), p);
-        cacheSet(cacheKey(["academic-completion", credential!]), c);
-        cacheSet(cacheKey(["academic-warnings", credential!]), w);
-        useRefreshStore.getState().markFresh();
-      } catch (err) {
-        if (hasCache) {
-          useRefreshStore.getState().markStale();
-        } else {
-          toast.error((err as Error).message || t("app.updating"));
-        }
-      } finally {
-        setLoading(false);
-        if (refreshing) useRefreshStore.getState().end();
-      }
-    }
-    load();
-  }, [credential, t]);
+  const warnings = useCachedData(["academic-warnings", credential], {
+    fetch: () => getAcademicWarnings(credential!),
+    fallback: () => [],
+  });
 
   const termOptions = useMemo(
     () =>
       Array.from(
-        new Set(plans.map((p) => p.term).filter(Boolean) as string[]),
+        new Set((plans.data ?? []).map((p) => p.term).filter(Boolean) as string[]),
       ).sort(),
-    [plans],
+    [plans.data],
   );
   const groupOptions = useMemo(
     () =>
       Array.from(
-        new Set(plans.map((p) => p.course_group).filter(Boolean) as string[]),
+        new Set((plans.data ?? []).map((p) => p.course_group).filter(Boolean) as string[]),
       ).sort(),
-    [plans],
+    [plans.data],
   );
 
   const activeWarnings = useMemo(
-    () => warnings.filter((w) => w.warning_level !== "1"),
-    [warnings],
+    () => (warnings.data ?? []).filter((w) => w.warning_level !== "1"),
+    [warnings.data],
   );
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    return plans.filter((p) => {
+    return (plans.data ?? []).filter((p) => {
       if (keyword) {
         const haystack = `${p.course_name ?? ""} ${p.course_code ?? ""}`.toLowerCase();
         if (!haystack.includes(keyword)) return false;
@@ -163,7 +112,7 @@ export default function TrainingPlanPage() {
       if (groupFilter !== ALL && p.course_group !== groupFilter) return false;
       return true;
     });
-  }, [plans, search, requiredFilter, termFilter, groupFilter]);
+  }, [plans.data, search, requiredFilter, termFilter, groupFilter]);
 
   const hasActiveFilters =
     search.trim() !== "" ||
@@ -178,7 +127,7 @@ export default function TrainingPlanPage() {
     setGroupFilter(ALL);
   }
 
-  if (loading && plans.length === 0 && !completion) {
+  if (plans.loading && !plans.data && !completion.data) {
     return (
       <div className="flex flex-col gap-6">
         <Skeleton className="h-40" />
@@ -189,10 +138,10 @@ export default function TrainingPlanPage() {
   }
 
   const completionItems = [
-    { label: t("academic.planName"), value: completion?.plan_name },
-    { label: t("academic.totalRequired"), value: completion?.total_required },
-    { label: t("academic.completed"), value: completion?.completed },
-    { label: t("academic.elective"), value: completion?.elective },
+    { label: t("academic.planName"), value: completion.data?.plan_name },
+    { label: t("academic.totalRequired"), value: completion.data?.total_required },
+    { label: t("academic.completed"), value: completion.data?.completed },
+    { label: t("academic.elective"), value: completion.data?.elective },
   ];
 
   return (
@@ -206,7 +155,7 @@ export default function TrainingPlanPage() {
                 {t("academic.completionDescription")}
               </CardDescription>
             </div>
-            {completion && completion.passed ? (
+            {completion.data?.passed ? (
               <Badge variant="default" className="gap-1">
                 <CheckCircle2 className="size-3" />
                 {t("academic.passed")}
@@ -215,7 +164,7 @@ export default function TrainingPlanPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {completion ? (
+          {completion.data ? (
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2">
               {completionItems.map((item) => (
                 <div
@@ -284,10 +233,10 @@ export default function TrainingPlanPage() {
               {hasActiveFilters
                 ? t("trainingPlan.filters.filteredCount", {
                     filtered: filtered.length,
-                    total: plans.length,
+                    total: plans.data?.length ?? 0,
                   })
                 : t("trainingPlan.filters.activeCount", {
-                    count: plans.length,
+                    count: plans.data?.length ?? 0,
                   })}
             </Badge>
           </div>
@@ -408,7 +357,7 @@ export default function TrainingPlanPage() {
                       colSpan={6}
                       className="text-center text-muted-foreground"
                     >
-                      {plans.length === 0
+                      {(plans.data?.length ?? 0) === 0
                         ? t("trainingPlan.table.noData")
                         : t("trainingPlan.table.noMatch")}
                     </TableCell>

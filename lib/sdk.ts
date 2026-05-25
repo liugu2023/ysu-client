@@ -24,6 +24,8 @@ import {
 } from "./jwmobile";
 import { useAuthStore } from "./auth-store";
 import { initServerConfig } from "./server-config";
+import { clearAllCache } from "./cache";
+import { useRefreshStore } from "./refresh-store";
 
 /** 从 auth-store 恢复 CAS 凭据、JWXT 会话和 mobile 会话到各自的 jar。 */
 export async function initSDK(): Promise<void> {
@@ -80,6 +82,8 @@ export function resetSDK(): void {
   resetCAS();
   resetJWXT();
   resetMobileAuth();
+  clearAllCache();
+  useRefreshStore.setState({ count: 0, stale: 0 });
 }
 
 /** 获取 CAS cookie jar(调试用)。 */

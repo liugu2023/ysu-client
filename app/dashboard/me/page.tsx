@@ -24,12 +24,11 @@ import { useSettingsStore } from "@/lib/settings-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { useMobileHeaderRight } from "@/lib/mobile-header-store";
 import { getStudentInfo } from "@/lib/api";
-import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
+import { useCachedData, LONG_TTL_MS } from "@/lib/use-cached-data";
 import { resetSDK } from "@/lib/sdk";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import { useTheme } from "next-themes";
 import { APP_VERSION, APP_BUILD } from "@/lib/version";
-import type { StudentInfo } from "@/lib/types";
 
 export default function MePage() {
   const router = useRouter();
@@ -38,27 +37,14 @@ export default function MePage() {
   const { t } = useTranslation();
   const { theme, setTheme, systemTheme } = useTheme();
 
-  const [student, setStudent] = useState<StudentInfo | null>(null);
-  const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  useEffect(() => {
-    if (!credential) return;
-    const cached = cacheGet<StudentInfo>(cacheKey(["student", credential]));
-    if (cached) {
-      setStudent(cached);
-      setLoading(false);
-    }
-    getStudentInfo(credential)
-      .then((s) => {
-        setStudent(s);
-        cacheSet(cacheKey(["student", credential]), s);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [credential]);
+  const student = useCachedData(["student", credential], {
+    fetch: () => getStudentInfo(),
+    ttl: LONG_TTL_MS,
+  });
 
   const isSystem = theme === "system";
   const effectiveTheme = isSystem ? systemTheme : theme;
@@ -131,8 +117,8 @@ export default function MePage() {
 
   const avatarImage = useSettingsStore((s) => s.avatarImage);
 
-  const displayName = student?.name || username || t("me.profileFallback");
-  const initials = (student?.name || username || "U").slice(-2);
+  const displayName = student.data?.name || username || t("me.profileFallback");
+  const initials = (student.data?.name || username || "U").slice(-2);
 
   return (
     <div className="flex flex-col gap-4">
@@ -143,7 +129,7 @@ export default function MePage() {
             <AvatarFallback className="text-lg">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            {loading && !student ? (
+            {student.loading && !student.data ? (
               <>
                 <Skeleton className="h-5 w-24" />
                 <Skeleton className="h-4 w-32" />
@@ -151,19 +137,19 @@ export default function MePage() {
             ) : (
               <>
                 <span className="truncate text-base font-semibold">{displayName}</span>
-                {student?.student_id && (
+                {student.data?.student_id && (
                   <span className="truncate text-sm text-muted-foreground">
-                    {student.student_id}
+                    {student.data.student_id}
                   </span>
                 )}
-                {student?.department && (
+                {student.data?.department && (
                   <span className="truncate text-xs text-muted-foreground md:hidden">
-                    {student.department}
+                    {student.data.department}
                   </span>
                 )}
-                {(student?.department || student?.major) && (
+                {(student.data?.department || student.data?.major) && (
                   <span className="hidden truncate text-xs text-muted-foreground md:inline">
-                    {[student.department, student.major].filter(Boolean).join(" · ")}
+                    {[student.data.department, student.data.major].filter(Boolean).join(" · ")}
                   </span>
                 )}
               </>

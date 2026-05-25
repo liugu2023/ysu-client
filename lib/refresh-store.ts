@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { create } from "zustand";
 
 interface RefreshState {
@@ -20,13 +19,3 @@ export const useRefreshStore = create<RefreshState>((set) => ({
   markStale: () => set((s) => ({ stale: s.stale + 1 })),
   markFresh: () => set((s) => ({ stale: Math.max(0, s.stale - 1) })),
 }));
-
-export function useBackgroundRefresh(active: boolean) {
-  const start = useRefreshStore((s) => s.start);
-  const end = useRefreshStore((s) => s.end);
-  useEffect(() => {
-    if (!active) return;
-    start();
-    return () => end();
-  }, [active, start, end]);
-}

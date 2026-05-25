@@ -51,11 +51,11 @@ import {
   getGradeDistribution,
   getGradeRanking,
 } from "@/lib/api";
-import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
+import { cacheGetStale, cacheSet, cacheKey } from "@/lib/cache";
 import { useRefreshStore } from "@/lib/refresh-store";
+import { useCachedData } from "@/lib/use-cached-data";
 import type {
   Grade,
-  GPAStats,
   GradeStatistics,
   GradeDistribution,
   GradeRanking,
@@ -66,8 +66,12 @@ export default function GradesPage() {
   const credential = useAuthStore((s) => s.credential);
   const { t } = useTranslation();
   const [grades, setGrades] = useState<Grade[]>([]);
-  const [gpa, setGpa] = useState<GPAStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const gpa = useCachedData(["gpa", credential], {
+    fetch: () => getGPAStats(credential!),
+    fallback: () => null,
+  });
   const ALL_TERM = "__all__";
   const [term, setTerm] = useState(ALL_TERM);
   const [courseName, setCourseName] = useState("");
@@ -92,13 +96,10 @@ export default function GradesPage() {
   useEffect(() => {
     if (!credential) return;
 
-    const cachedGrades = cacheGet<Grade[]>(cacheKey(["grades", credential]));
-    const cachedGpa = cacheGet<GPAStats>(cacheKey(["gpa", credential]));
-    if (cachedGrades) setGrades(cachedGrades);
-    if (cachedGpa) setGpa(cachedGpa);
+    const cachedGrades = cacheGetStale<Grade[]>(cacheKey(["grades", credential]));
+    if (cachedGrades) setGrades(cachedGrades.data);
     let refreshing = false;
-    const hasCache = cachedGrades || cachedGpa;
-    if (hasCache) {
+    if (cachedGrades) {
       setLoading(false);
       useRefreshStore.getState().start();
       refreshing = true;
@@ -106,23 +107,18 @@ export default function GradesPage() {
 
     async function load() {
       try {
-        const [g, gp, weekInfo] = await Promise.all([
+        const [g, weekInfo] = await Promise.all([
           getGrades(credential!),
-          getGPAStats(credential!).catch(() => null),
           getCurrentWeek(credential!).catch(() => null),
         ]);
         setGrades(g);
-        if (gp !== null) {
-          setGpa(gp);
-          cacheSet(cacheKey(["gpa", credential!]), gp);
-        }
         cacheSet(cacheKey(["grades", credential!]), g);
         if (weekInfo?.term) {
           setTerm((prev) => (prev === ALL_TERM ? weekInfo.term! : prev));
         }
         useRefreshStore.getState().markFresh();
       } catch (err) {
-        if (hasCache) {
+        if (cachedGrades) {
           useRefreshStore.getState().markStale();
         } else {
           toast.error((err as Error).message || t("app.updating"));
@@ -285,17 +281,17 @@ export default function GradesPage() {
   }, [filtered, term]);
 
   const basicGpaItems = [
-    { label: t("grades.gpaInitial"), value: gpa?.gpa_initial },
-    { label: t("dashboard.weightedAvg"), value: gpa?.weighted_avg },
-    { label: t("dashboard.arithmeticAvg"), value: gpa?.arithmetic_avg },
+    { label: t("grades.gpaInitial"), value: gpa.data?.gpa_initial },
+    { label: t("dashboard.weightedAvg"), value: gpa.data?.weighted_avg },
+    { label: t("dashboard.arithmeticAvg"), value: gpa.data?.arithmetic_avg },
     ...(termWeightedGpa !== null ? [{ label: t("grades.termWeightedGpa"), value: termWeightedGpa }] : []),
   ];
 
   const extraGpaItems = [
-    { label: t("grades.gpaHighest"), value: gpa?.gpa_highest },
-    { label: t("grades.requiredGpaHighest"), value: gpa?.required_gpa_highest },
-    { label: t("grades.degreeGpaInitial"), value: gpa?.degree_gpa_initial },
-    { label: t("grades.degreeWeightedAvg"), value: gpa?.degree_weighted_avg },
+    { label: t("grades.gpaHighest"), value: gpa.data?.gpa_highest },
+    { label: t("grades.requiredGpaHighest"), value: gpa.data?.required_gpa_highest },
+    { label: t("grades.degreeGpaInitial"), value: gpa.data?.degree_gpa_initial },
+    { label: t("grades.degreeWeightedAvg"), value: gpa.data?.degree_weighted_avg },
   ];
 
   if (loading && grades.length === 0) {
