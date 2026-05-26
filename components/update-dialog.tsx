@@ -168,7 +168,7 @@ export function UpdateDialog() {
         }
       }}
     >
-      <DialogContent className="max-h-[85vh] flex flex-col">
+      <DialogContent className="max-h-[85vh] flex flex-col" showCloseButton={state !== "downloading" && state !== "installing"}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
