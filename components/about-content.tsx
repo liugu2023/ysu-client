@@ -6,6 +6,7 @@ import {
   Code,
   CircleFadingArrowUp,
   ExternalLink,
+  Globe,
   RotateCcw,
   CheckCircle2,
   AlertCircle,
@@ -44,6 +45,7 @@ import {
   APP_COPYRIGHT,
   APP_LICENSE,
   APP_REPO,
+  APP_WEBSITE,
   APP_OPEN_SOURCE,
   APP_PEOPLE,
 } from "@/lib/version";
@@ -179,6 +181,19 @@ export function AboutContent() {
           >
             <Code className="size-5 shrink-0 text-muted-foreground" />
             <span className="flex-1 text-sm">Youwenqwq/ysu-client</span>
+            <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
+          </a>
+
+          <Separator />
+
+          <a
+            href={APP_WEBSITE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 py-3 transition-colors active:bg-muted/60"
+          >
+            <Globe className="size-5 shrink-0 text-muted-foreground" />
+            <span className="flex-1 text-sm">{t("about.website")}</span>
             <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
           </a>
 
