@@ -118,6 +118,14 @@ async function cleanOtaArtifacts(): Promise<void> {
   } catch {
     // 目录不存在或无法删除，忽略
   }
+
+  // 清理 APK 下载缓存
+  try {
+    const { clearApkCache } = await import("./updater");
+    await clearApkCache();
+  } catch {
+    // 忽略
+  }
 }
 
 /** 重置所有 SDK 状态(登出时调用)。 */
