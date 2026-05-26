@@ -19,8 +19,9 @@ class YsuFilePlugin : Plugin() {
         private const val APK_DIR_NAME = "ysu_apk_update"
     }
 
-    private fun getApkDir(): File {
-        val dir = File(context.externalCacheDir, APK_DIR_NAME)
+    private fun getApkDir(): File? {
+        val parent = context.externalCacheDir ?: return null
+        val dir = File(parent, APK_DIR_NAME)
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
@@ -30,51 +31,62 @@ class YsuFilePlugin : Plugin() {
         val urlStr = call.getString("url") ?: return call.reject("Missing url")
         val fileName = call.getString("fileName") ?: "app-update.apk"
 
-        // 清理旧 APK 文件
         val dir = getApkDir()
+        if (dir == null) {
+            call.reject("External storage unavailable")
+            return
+        }
+
+        // 清理旧 APK 文件
         dir.listFiles()?.filter { it.extension == "apk" }?.forEach { it.delete() }
 
         val dest = File(dir, fileName)
 
         // 在后台线程执行下载
-        object : Thread() {
-            override fun run() {
-                try {
-                    val url = URL(urlStr)
-                    val conn = url.openConnection() as HttpURLConnection
-                    conn.connectTimeout = 15000
-                    conn.readTimeout = 15000
-                    conn.connect()
+        Thread {
+            var conn: HttpURLConnection? = null
+            try {
+                val url = URL(urlStr)
+                conn = url.openConnection() as HttpURLConnection
+                conn.connectTimeout = 15000
+                conn.readTimeout = 15000
+                conn.connect()
 
-                    if (conn.responseCode != HttpURLConnection.HTTP_OK) {
-                        call.reject("HTTP ${conn.responseCode}")
-                        return
-                    }
+                if (conn.responseCode != HttpURLConnection.HTTP_OK) {
+                    call.reject("HTTP ${conn.responseCode}")
+                    return@Thread
+                }
 
-                    val total = conn.contentLength
-                    var downloaded = 0
+                val total = conn.contentLength
+                var downloaded = 0
+                var lastPercent = -1
 
-                    conn.inputStream.use { input ->
-                        FileOutputStream(dest).use { output ->
-                            val buffer = ByteArray(65536)
-                            var read: Int
-                            while (input.read(buffer).also { read = it } != -1) {
-                                output.write(buffer, 0, read)
-                                downloaded += read
-                                if (total > 0) {
-                                    val percent = (downloaded * 100 / total)
+                conn.inputStream.use { input ->
+                    FileOutputStream(dest).use { output ->
+                        val buffer = ByteArray(65536)
+                        var read: Int
+                        while (input.read(buffer).also { read = it } != -1) {
+                            output.write(buffer, 0, read)
+                            downloaded += read
+                            if (total > 0) {
+                                val percent = (downloaded * 100 / total)
+                                if (percent != lastPercent) {
+                                    lastPercent = percent
                                     val data = JSObject().put("percent", percent)
                                     notifyListeners("downloadProgress", data)
                                 }
                             }
                         }
                     }
-
-                    val result = JSObject().put("path", dest.absolutePath)
-                    call.resolve(result)
-                } catch (e: Exception) {
-                    call.reject("Download failed: ${e.message}", e)
                 }
+
+                val result = JSObject().put("path", dest.absolutePath)
+                call.resolve(result)
+            } catch (e: Exception) {
+                dest.delete() // 清理部分下载的文件
+                call.reject("Download failed: ${e.message}", e)
+            } finally {
+                conn?.disconnect()
             }
         }.start()
     }
@@ -111,6 +123,10 @@ class YsuFilePlugin : Plugin() {
     @PluginMethod
     fun clearDirectory(call: PluginCall) {
         val dir = getApkDir()
+        if (dir == null) {
+            call.reject("External storage unavailable")
+            return
+        }
         dir.listFiles()?.forEach { it.delete() }
         call.resolve()
     }
