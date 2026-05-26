@@ -1,5 +1,6 @@
 import { CapacitorUpdater } from "@capgo/capacitor-updater";
 import { App } from "@capacitor/app";
+import { registerPlugin } from "@capacitor/core";
 import { APP_VERSION } from "./version";
 
 export interface UpdateInfo {
@@ -190,4 +191,55 @@ export async function resetToBuiltin(): Promise<void> {
 /** Open APK download URL in browser for system download & install. */
 export function openApkDownload(url: string): void {
   window.open(url, "_system");
+}
+
+// ---------------------------------------------------------------------------
+// In-app APK download via native YsuFile plugin
+// ---------------------------------------------------------------------------
+
+interface YsuFilePlugin {
+  downloadApk(options: { url: string; fileName?: string }): Promise<{ path: string }>;
+  installApk(options: { path: string }): Promise<void>;
+  clearDirectory(options: { path?: string }): Promise<void>;
+  addListener(eventName: "downloadProgress", listener: (state: { percent: number }) => void): Promise<{ remove: () => void }>;
+}
+
+const YsuFile = registerPlugin<YsuFilePlugin>("YsuFile");
+
+/** Path of the last successfully downloaded APK (kept in module scope). */
+let lastDownloadedApkPath: string | null = null;
+
+/** Download APK to app cache directory (with progress callback). */
+export async function downloadApkInApp(
+  info: UpdateInfo,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  if (!info.apkDownloadUrl) {
+    throw new Error("No APK download URL");
+  }
+
+  const listener = await YsuFile.addListener("downloadProgress", (state) => {
+    onProgress?.(state.percent);
+  });
+
+  try {
+    const result = await YsuFile.downloadApk({ url: info.apkDownloadUrl });
+    lastDownloadedApkPath = result.path;
+  } finally {
+    await listener.remove();
+  }
+}
+
+/** Launch system installer for the previously downloaded APK. */
+export async function installDownloadedApk(): Promise<void> {
+  if (!lastDownloadedApkPath) {
+    throw new Error("No APK downloaded");
+  }
+  await YsuFile.installApk({ path: lastDownloadedApkPath });
+}
+
+/** Clear the APK cache directory. */
+export async function clearApkCache(): Promise<void> {
+  await YsuFile.clearDirectory({});
+  lastDownloadedApkPath = null;
 }
