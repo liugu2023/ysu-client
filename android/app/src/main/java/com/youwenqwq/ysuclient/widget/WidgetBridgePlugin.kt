@@ -14,6 +14,7 @@ class WidgetBridgePlugin : Plugin() {
         val coursesJson = call.getString("coursesJson", "[]")
         val currentWeekJson = call.getString("currentWeekJson", "")
         val syncReminderHours = call.getInt("syncReminderHours", 24) ?: 24
+        val showNextDaySchedule = call.getBoolean("showNextDaySchedule", false) ?: false
 
         val prefs = context.getSharedPreferences(WidgetConfig.PREFS_NAME, android.content.Context.MODE_PRIVATE)
         prefs.edit().apply {
@@ -22,6 +23,7 @@ class WidgetBridgePlugin : Plugin() {
             putBoolean(WidgetConfig.KEY_HAS_SYNCED_SCHEDULE, true)
             putLong(WidgetConfig.KEY_LAST_SYNC_TIME, System.currentTimeMillis())
             putInt(WidgetConfig.KEY_SYNC_REMINDER_HOURS, syncReminderHours)
+            putBoolean(WidgetConfig.KEY_SHOW_NEXT_DAY_SCHEDULE, showNextDaySchedule)
             apply()
         }
 
@@ -35,10 +37,12 @@ class WidgetBridgePlugin : Plugin() {
     @PluginMethod
     fun syncWidgetSettings(call: PluginCall) {
         val syncReminderHours = call.getInt("syncReminderHours", 24) ?: 24
+        val showNextDaySchedule = call.getBoolean("showNextDaySchedule", false) ?: false
 
         val prefs = context.getSharedPreferences(WidgetConfig.PREFS_NAME, android.content.Context.MODE_PRIVATE)
         prefs.edit().apply {
             putInt(WidgetConfig.KEY_SYNC_REMINDER_HOURS, syncReminderHours)
+            putBoolean(WidgetConfig.KEY_SHOW_NEXT_DAY_SCHEDULE, showNextDaySchedule)
             apply()
         }
 

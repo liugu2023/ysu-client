@@ -138,7 +138,7 @@ export default function SchedulePage() {
         cacheSet(schedKey, c);
         cacheSet(weekKey, w);
         const activeCourses = w?.week ? c.filter((course) => isCourseActiveInWeek(course, w.week)) : c;
-        syncScheduleToWidget(activeCourses, w, periodsRef.current, useSettingsStore.getState().widgetSyncReminderHours).catch(() => {});
+        syncScheduleToWidget(activeCourses, w, periodsRef.current, useSettingsStore.getState().widgetSyncReminderHours, useSettingsStore.getState().widgetShowNextDaySchedule).catch(() => {});
         useRefreshStore.getState().markFresh();
       } catch (err) {
         if (hasCache) {
@@ -172,7 +172,7 @@ export default function SchedulePage() {
       }
       if (c !== null && w !== null) {
         const activeCourses = w.week ? c.filter((course) => isCourseActiveInWeek(course, w.week)) : c;
-        syncScheduleToWidget(activeCourses, w, periods, useSettingsStore.getState().widgetSyncReminderHours).catch(() => {});
+        syncScheduleToWidget(activeCourses, w, periods, useSettingsStore.getState().widgetSyncReminderHours, useSettingsStore.getState().widgetShowNextDaySchedule).catch(() => {});
       }
       setFilterDrawerOpen(false);
     } catch (err) {

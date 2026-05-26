@@ -15,6 +15,7 @@ interface SettingsState {
   cardOpacity: number;
   defaultLandingPage: LandingPage;
   widgetSyncReminderHours: number;
+  widgetShowNextDaySchedule: boolean;
   avatarImage: string;
   customCerBaseUrl: string;
   customJwxtBaseUrl: string;
@@ -30,6 +31,7 @@ interface SettingsState {
   setCardOpacity: (opacity: number) => void;
   setDefaultLandingPage: (page: LandingPage) => void;
   setWidgetSyncReminderHours: (hours: number) => void;
+  setWidgetShowNextDaySchedule: (v: boolean) => void;
   setAvatarImage: (image: string) => void;
   setCustomCerBaseUrl: (url: string) => void;
   setCustomJwxtBaseUrl: (url: string) => void;
@@ -50,6 +52,7 @@ export const useSettingsStore = create<SettingsState>()(
       cardOpacity: 100,
       defaultLandingPage: "overview",
       widgetSyncReminderHours: 24,
+      widgetShowNextDaySchedule: false,
       avatarImage: "",
       customCerBaseUrl: "",
       customJwxtBaseUrl: "",
@@ -65,6 +68,7 @@ export const useSettingsStore = create<SettingsState>()(
       setCardOpacity: (cardOpacity) => set({ cardOpacity }),
       setDefaultLandingPage: (defaultLandingPage) => set({ defaultLandingPage }),
       setWidgetSyncReminderHours: (widgetSyncReminderHours) => set({ widgetSyncReminderHours }),
+      setWidgetShowNextDaySchedule: (widgetShowNextDaySchedule) => set({ widgetShowNextDaySchedule }),
       setAvatarImage: (avatarImage) => set({ avatarImage }),
       setCustomCerBaseUrl: (customCerBaseUrl) => set({ customCerBaseUrl }),
       setCustomJwxtBaseUrl: (customJwxtBaseUrl) => set({ customJwxtBaseUrl }),

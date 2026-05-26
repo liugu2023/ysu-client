@@ -101,6 +101,7 @@ export default function DashboardPage() {
   }, [periodsRaw.data]);
 
   const widgetSyncReminderHours = useSettingsStore((s) => s.widgetSyncReminderHours);
+  const widgetShowNextDaySchedule = useSettingsStore((s) => s.widgetShowNextDaySchedule);
 
   // Sync courses to widget when fresh data arrives
   const activeCoursesForWidget = useMemo(() => {
@@ -110,9 +111,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (activeCoursesForWidget) {
-      syncScheduleToWidget(activeCoursesForWidget, currentWeek.data, periods, widgetSyncReminderHours).catch(() => {});
+      syncScheduleToWidget(activeCoursesForWidget, currentWeek.data, periods, widgetSyncReminderHours, widgetShowNextDaySchedule).catch(() => {});
     }
-  }, [activeCoursesForWidget, currentWeek.data, periods, widgetSyncReminderHours]);
+  }, [activeCoursesForWidget, currentWeek.data, periods, widgetSyncReminderHours, widgetShowNextDaySchedule]);
 
   // Sync exams to widget when fresh data arrives
   useEffect(() => {

@@ -14,6 +14,7 @@ object WidgetConfig {
     const val KEY_LAST_SYNC_TIME = "last_sync_time"
     const val KEY_LAST_EXAM_SYNC_TIME = "last_exam_sync_time"
     const val KEY_SYNC_REMINDER_HOURS = "sync_reminder_hours"
+    const val KEY_SHOW_NEXT_DAY_SCHEDULE = "show_next_day_schedule"
 
     // Course color bar colors (ARGB) - matching web course-color.ts palette
     val COURSE_COLORS = intArrayOf(

@@ -41,8 +41,25 @@ class ScheduleWidgetHelper(private val context: Context) {
         val (courses, weekInfo, hasSynced) = loadData()
         val syncInfo = loadSyncInfo()
         val todayCourses = filterTodayCourses(courses)
-        val remainingCourses = getRemainingCourses(todayCourses)
         val hasCoursesToday = todayCourses.isNotEmpty()
+
+        val showNextDay = loadShowNextDaySchedule()
+        var remainingCourses: List<WidgetCourse>
+        var targetDay: Calendar? = null
+
+        if (hasCoursesToday) {
+            remainingCourses = getRemainingCourses(todayCourses)
+        } else if (showNextDay) {
+            val nextDay = findNextDayWithCourses(courses)
+            if (nextDay != null) {
+                targetDay = nextDay.first
+                remainingCourses = nextDay.second
+            } else {
+                remainingCourses = emptyList()
+            }
+        } else {
+            remainingCourses = emptyList()
+        }
 
         val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
         val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
@@ -51,9 +68,9 @@ class ScheduleWidgetHelper(private val context: Context) {
         val isSmall = minWidth < 180
 
         val views = if (isSmall) {
-            buildSmallWidget(remainingCourses, weekInfo, hasCoursesToday, hasSynced, syncInfo)
+            buildSmallWidget(remainingCourses, weekInfo, hasCoursesToday, hasSynced, syncInfo, targetDay)
         } else {
-            buildMediumWidget(remainingCourses, weekInfo, hasCoursesToday, hasSynced, syncInfo)
+            buildMediumWidget(remainingCourses, weekInfo, hasCoursesToday, hasSynced, syncInfo, targetDay)
         }
 
         // Set click intent to open app schedule page via Deep Link
@@ -76,11 +93,13 @@ class ScheduleWidgetHelper(private val context: Context) {
         weekInfo: WidgetWeekInfo?,
         hasCoursesToday: Boolean,
         hasSynced: Boolean,
-        syncInfo: SyncInfo
+        syncInfo: SyncInfo,
+        targetDay: Calendar? = null
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.schedule_widget_small)
 
-        val weekdayName = getWeekdayName(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))
+        val displayCalendar = targetDay ?: Calendar.getInstance()
+        val weekdayName = getWeekdayName(displayCalendar.get(Calendar.DAY_OF_WEEK))
         views.setTextViewText(R.id.widget_weekday, weekdayName)
 
         if (remainingCourses.isEmpty()) {
@@ -137,11 +156,12 @@ class ScheduleWidgetHelper(private val context: Context) {
         weekInfo: WidgetWeekInfo?,
         hasCoursesToday: Boolean,
         hasSynced: Boolean,
-        syncInfo: SyncInfo
+        syncInfo: SyncInfo,
+        targetDay: Calendar? = null
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.schedule_widget_medium)
 
-        val calendar = Calendar.getInstance()
+        val calendar = targetDay ?: Calendar.getInstance()
         val month = calendar.get(Calendar.MONTH) + 1
         val day = calendar.get(Calendar.DAY_OF_MONTH)
         val weekdayName = getWeekdayName(calendar.get(Calendar.DAY_OF_WEEK))
@@ -226,6 +246,32 @@ class ScheduleWidgetHelper(private val context: Context) {
         views.setInt(colorBarId, "setBackgroundColor", color)
     }
 
+    private fun loadShowNextDaySchedule(): Boolean {
+        val prefs = context.getSharedPreferences(WidgetConfig.PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(WidgetConfig.KEY_SHOW_NEXT_DAY_SCHEDULE, false)
+    }
+
+    /**
+     * Find the next day (within 7 days) that has courses.
+     * Returns a Pair of the target Calendar and that day's courses, or null if none found.
+     */
+    private fun findNextDayWithCourses(courses: List<WidgetCourse>): Pair<Calendar, List<WidgetCourse>>? {
+        val calendar = Calendar.getInstance()
+        val todayWeekday = calendar.get(Calendar.DAY_OF_WEEK)
+        val mappedToday = mapAndroidWeekday(todayWeekday)
+
+        for (offset in 1..7) {
+            val targetWeekday = ((mappedToday - 1 + offset) % 7) + 1
+            val dayCourses = courses.filter { it.weekDay == targetWeekday }.sortedBy { it.startSection }
+            if (dayCourses.isNotEmpty()) {
+                val targetCalendar = Calendar.getInstance()
+                targetCalendar.add(Calendar.DAY_OF_MONTH, offset)
+                return Pair(targetCalendar, dayCourses)
+            }
+        }
+        return null
+    }
+
     private fun loadData(): Triple<List<WidgetCourse>, WidgetWeekInfo?, Boolean> {
         val prefs = context.getSharedPreferences(WidgetConfig.PREFS_NAME, Context.MODE_PRIVATE)
         val coursesJson = prefs.getString(WidgetConfig.KEY_COURSES, "[]") ?: "[]"
@@ -273,9 +319,16 @@ class ScheduleWidgetHelper(private val context: Context) {
 
     private fun filterTodayCourses(courses: List<WidgetCourse>): List<WidgetCourse> {
         val todayWeekday = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-        // Android Calendar: Sunday=1, Monday=2, ... Saturday=7
-        // Our data: Monday=1, Tuesday=2, ... Sunday=7
-        val mappedWeekday = when (todayWeekday) {
+        val mappedWeekday = mapAndroidWeekday(todayWeekday)
+        return courses
+            .filter { it.weekDay == mappedWeekday }
+            .sortedBy { it.startSection }
+    }
+
+    // Android Calendar: Sunday=1, Monday=2, ... Saturday=7
+    // Our data: Monday=1, Tuesday=2, ... Sunday=7
+    private fun mapAndroidWeekday(androidDayOfWeek: Int): Int {
+        return when (androidDayOfWeek) {
             Calendar.MONDAY -> 1
             Calendar.TUESDAY -> 2
             Calendar.WEDNESDAY -> 3
@@ -285,9 +338,6 @@ class ScheduleWidgetHelper(private val context: Context) {
             Calendar.SUNDAY -> 7
             else -> 1
         }
-        return courses
-            .filter { it.weekDay == mappedWeekday }
-            .sortedBy { it.startSection }
     }
 
     private fun getRemainingCourses(courses: List<WidgetCourse>): List<WidgetCourse> {

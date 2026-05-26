@@ -6,6 +6,7 @@ export interface WidgetBridgePlugin {
     coursesJson: string;
     currentWeekJson: string;
     syncReminderHours: number;
+    showNextDaySchedule: boolean;
   }): Promise<void>;
   syncExams(options: {
     examsJson: string;
@@ -13,6 +14,7 @@ export interface WidgetBridgePlugin {
   }): Promise<void>;
   syncWidgetSettings(options: {
     syncReminderHours: number;
+    showNextDaySchedule: boolean;
   }): Promise<void>;
 }
 
@@ -63,6 +65,7 @@ export async function syncScheduleToWidget(
   currentWeek: CurrentWeek | null,
   periods: ClassPeriod[],
   syncReminderHours: number = 24,
+  showNextDaySchedule: boolean = false,
 ): Promise<void> {
   try {
     const periodMap = new Map(periods.map((p) => [p.section, p]));
@@ -94,6 +97,7 @@ export async function syncScheduleToWidget(
       coursesJson: JSON.stringify(widgetCourses),
       currentWeekJson: weekInfo ? JSON.stringify(weekInfo) : "",
       syncReminderHours,
+      showNextDaySchedule,
     });
   } catch {
     // Widget sync is best-effort; fail silently
@@ -102,9 +106,10 @@ export async function syncScheduleToWidget(
 
 export async function syncWidgetSettingsToWidget(
   syncReminderHours: number,
+  showNextDaySchedule: boolean = false,
 ): Promise<void> {
   try {
-    await WidgetBridge.syncWidgetSettings({ syncReminderHours });
+    await WidgetBridge.syncWidgetSettings({ syncReminderHours, showNextDaySchedule });
   } catch {
     // Widget sync is best-effort; fail silently
   }

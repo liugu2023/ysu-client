@@ -39,6 +39,7 @@ import {
   Sun,
   Globe,
   Clock,
+  CalendarClock,
   UserCircle,
 } from "lucide-react";
 
@@ -53,6 +54,8 @@ export default function SettingsPage() {
   const setDefaultLandingPage = useSettingsStore((s) => s.setDefaultLandingPage);
   const widgetSyncReminderHours = useSettingsStore((s) => s.widgetSyncReminderHours);
   const setWidgetSyncReminderHours = useSettingsStore((s) => s.setWidgetSyncReminderHours);
+  const widgetShowNextDaySchedule = useSettingsStore((s) => s.widgetShowNextDaySchedule);
+  const setWidgetShowNextDaySchedule = useSettingsStore((s) => s.setWidgetShowNextDaySchedule);
   const [localSyncHours, setLocalSyncHours] = useState(String(widgetSyncReminderHours));
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
@@ -62,7 +65,7 @@ export default function SettingsPage() {
     setLocalSyncHours(String(clamped));
     if (clamped !== widgetSyncReminderHours) {
       setWidgetSyncReminderHours(clamped);
-      syncWidgetSettingsToWidget(clamped).catch(() => {});
+      syncWidgetSettingsToWidget(clamped, widgetShowNextDaySchedule).catch(() => {});
     }
   }
 
@@ -196,6 +199,32 @@ export default function SettingsPage() {
                 />
                 <span className="text-sm text-muted-foreground">{t("settings.widgetSyncReminderUnit")}</span>
               </div>
+            </div>
+
+            {/* 无课显示下一有课日 */}
+            <div className="flex items-center gap-3 border-t border-border py-3">
+              <CalendarClock className="size-5 shrink-0 text-muted-foreground" />
+              <span className="flex-1 text-sm">{t("settings.widgetShowNextDay")}</span>
+              <ToggleGroup
+                type="single"
+                value={widgetShowNextDaySchedule ? "on" : "off"}
+                onValueChange={(v) => {
+                  if (v) {
+                    const newVal = v === "on";
+                    setWidgetShowNextDaySchedule(newVal);
+                    syncWidgetSettingsToWidget(widgetSyncReminderHours, newVal).catch(() => {});
+                  }
+                }}
+                variant="outline"
+                size="sm"
+              >
+                <ToggleGroupItem value="on" className="text-xs">
+                  {t("settings.toggleOn")}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="off" className="text-xs">
+                  {t("settings.toggleOff")}
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
 
             {/* 头像 */}
