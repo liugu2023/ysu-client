@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(WidgetBridgePlugin.class);
         registerPlugin(WebViewCompatPlugin.class);
+        registerPlugin(YsuFilePlugin.class);
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
     }
