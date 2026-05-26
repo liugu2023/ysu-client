@@ -16,10 +16,11 @@ import { useUpdateStore } from "@/lib/update-store";
 import {
   downloadAndApply,
   applyAndRestart,
-  openApkDownload,
+  downloadApkInApp,
+  installDownloadedApk,
 } from "@/lib/updater";
 
-type DialogState = "idle" | "downloading" | "downloaded" | "error";
+type DialogState = "idle" | "downloading" | "downloaded" | "installing" | "error";
 
 export function UpdateDialog() {
   const { t } = useTranslation();
@@ -47,22 +48,21 @@ export function UpdateDialog() {
   const handleDownload = useCallback(async () => {
     if (!updateInfo) return;
 
-    if (isApk) {
-      openApkDownload(updateInfo.apkDownloadUrl);
-      handleClose();
-      return;
-    }
-
     setState("downloading");
     setProgress(0);
+
     try {
-      await downloadAndApply(updateInfo, setProgress);
+      if (isApk) {
+        await downloadApkInApp(updateInfo, setProgress);
+      } else {
+        await downloadAndApply(updateInfo, setProgress);
+      }
       setState("downloaded");
     } catch {
       setErrorMsg(t("update.errorDownload"));
       setState("error");
     }
-  }, [updateInfo, isApk, handleClose, t]);
+  }, [updateInfo, isApk, t]);
 
   const handleRestart = useCallback(async () => {
     try {
@@ -73,19 +73,38 @@ export function UpdateDialog() {
     }
   }, [t]);
 
+  const handleInstall = useCallback(async () => {
+    setState("installing");
+    try {
+      await installDownloadedApk();
+      handleClose();
+    } catch {
+      setErrorMsg(t("update.errorUnknown"));
+      setState("error");
+    }
+  }, [handleClose, t]);
+
   const title = isApk
     ? t("update.apkNewVersionTitle").replace("{version}", updateInfo?.version ?? "")
     : t("update.newVersionTitle").replace("{version}", updateInfo?.version ?? "");
 
   const primaryLabel =
     state === "downloaded"
-      ? t("update.restartNow")
-      : isApk
-        ? t("update.apkDownload")
-        : t("update.download");
+      ? isApk
+        ? t("update.install")
+        : t("update.restartNow")
+      : state === "installing"
+        ? t("update.installing")
+        : isApk
+          ? t("update.apkDownload")
+          : t("update.download");
 
   const primaryAction =
-    state === "downloaded" ? handleRestart : handleDownload;
+    state === "downloaded"
+      ? isApk
+        ? handleInstall
+        : handleRestart
+      : handleDownload;
 
   const canShow = showDialog && updateInfo !== null && (isApk || isWeb);
 
@@ -184,7 +203,7 @@ export function UpdateDialog() {
           )}
           <Button
             onClick={primaryAction}
-            disabled={state === "downloading"}
+            disabled={state === "downloading" || state === "installing"}
           >
             {primaryLabel}
           </Button>
