@@ -318,7 +318,7 @@ export async function getGrades(
     const rows = await _queryGrades({
       term: params?.term,
       courseName: params?.course_name,
-      pageSize: params?.page_size ?? 100,
+      pageSize: params?.page_size ?? 999,
       pageNumber: params?.page_number ?? 1,
     });
     return rows.map((r) => ({
@@ -604,7 +604,7 @@ export async function getTrainingPlan(
 ): Promise<TrainingPlan[]> {
   return withJWXT(async () => {
     const rows = await _queryTrainingPlan({
-      pageSize: params?.page_size ?? 500,
+      pageSize: params?.page_size ?? 999,
       pageNumber: params?.page_number ?? 1,
     });
     return rows.map((r) => ({

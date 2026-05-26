@@ -834,7 +834,7 @@ export async function queryGrades(opts?: {
 }): Promise<Grade[]> {
   const term = opts?.term;
   const courseName = opts?.courseName;
-  const pageSize = opts?.pageSize ?? 100;
+  const pageSize = opts?.pageSize ?? 999;
   const pageNumber = opts?.pageNumber ?? 1;
 
   return runWithReauth(async () => {
@@ -1171,7 +1171,7 @@ export async function queryTrainingPlan(opts?: {
   pageSize?: number;
   pageNumber?: number;
 }): Promise<TrainingPlan[]> {
-  const pageSize = opts?.pageSize ?? 500;
+  const pageSize = opts?.pageSize ?? 999;
   const pageNumber = opts?.pageNumber ?? 1;
 
   return runWithReauth(async () => {
