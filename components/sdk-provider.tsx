@@ -11,6 +11,7 @@ import { useUpdateStore } from "@/lib/update-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { isCapacitor } from "@/lib/platform";
 import { initSafeArea } from "@/lib/webview-compat";
+import { syncCastgcToNative } from "@/lib/notify";
 
 export function SDKProvider({ children }: { children: React.ReactNode }) {
   const { t, locale } = useTranslation();
@@ -74,6 +75,11 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
     initSDK()
       .then(() => {
         setSdkReady(true);
+
+        // Sync CASTGC to native plugin for background notifications
+        if (isCapacitor()) {
+          syncCastgcToNative().catch(() => {});
+        }
 
         // Check WebView compatibility (Capacitor only)
         if (isCapacitor()) {

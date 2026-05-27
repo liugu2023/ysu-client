@@ -21,6 +21,10 @@ interface SettingsState {
   customJwxtBaseUrl: string;
   schoolId: string;
   scheduleCompactMode: boolean;
+  notifyEnabled: boolean;
+  notifyCheckInterval: number;
+  notifyGrades: boolean;
+  notifyExams: boolean;
   hasHydrated: boolean;
   setUpdateMirror: (mirror: string) => void;
   setBackgroundImage: (image: string) => void;
@@ -37,6 +41,10 @@ interface SettingsState {
   setCustomJwxtBaseUrl: (url: string) => void;
   setSchoolId: (id: string) => void;
   setScheduleCompactMode: (v: boolean) => void;
+  setNotifyEnabled: (v: boolean) => void;
+  setNotifyCheckInterval: (v: number) => void;
+  setNotifyGrades: (v: boolean) => void;
+  setNotifyExams: (v: boolean) => void;
   setHasHydrated: (v: boolean) => void;
 }
 
@@ -58,6 +66,10 @@ export const useSettingsStore = create<SettingsState>()(
       customJwxtBaseUrl: "",
       schoolId: "ysu",
       scheduleCompactMode: false,
+      notifyEnabled: false,
+      notifyCheckInterval: 60,
+      notifyGrades: true,
+      notifyExams: true,
       hasHydrated: false,
       setUpdateMirror: (updateMirror) => set({ updateMirror }),
       setBackgroundImage: (backgroundImage) => set({ backgroundImage }),
@@ -74,6 +86,10 @@ export const useSettingsStore = create<SettingsState>()(
       setCustomJwxtBaseUrl: (customJwxtBaseUrl) => set({ customJwxtBaseUrl }),
       setSchoolId: (schoolId) => set({ schoolId }),
       setScheduleCompactMode: (scheduleCompactMode) => set({ scheduleCompactMode }),
+      setNotifyEnabled: (notifyEnabled) => set({ notifyEnabled }),
+      setNotifyCheckInterval: (notifyCheckInterval) => set({ notifyCheckInterval }),
+      setNotifyGrades: (notifyGrades) => set({ notifyGrades }),
+      setNotifyExams: (notifyExams) => set({ notifyExams }),
       setHasHydrated: (v) => set({ hasHydrated: v }),
     }),
     {

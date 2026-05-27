@@ -18,8 +18,15 @@ import {
   getStudentInfo,
   getExperimentalSchedule,
   getCurrentWeek,
+  getGrades,
+  getExams,
 } from "@/lib/api";
-import { RefreshCw, Trash2, Bug } from "lucide-react";
+import { useSettingsStore } from "@/lib/settings-store";
+import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
+import { diffGrades, diffExams, checkAndNotify, syncCastgcToNative, startNativePolling, stopNativePolling } from "@/lib/notify";
+import { NotifyPlugin } from "@/lib/notify-plugin";
+import type { Grade, Exam } from "@/lib/types";
+import { RefreshCw, Trash2, Bug, Bell, Play, Send, Smartphone, Shield, Power } from "lucide-react";
 import { toast } from "sonner";
 import { clearAllCache } from "@/lib/cache";
 
@@ -78,6 +85,22 @@ export default function DebugPage() {
 
   const [diag, setDiag] = useState<DiagnosticResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [notifyTestLog, setNotifyTestLog] = useState<string[]>([]);
+  const [nativeTestLog, setNativeTestLog] = useState<string[]>([]);
+  const [nativePermGranted, setNativePermGranted] = useState<boolean | null>(null);
+
+  const notifyEnabled = useSettingsStore((s) => s.notifyEnabled);
+  const notifyCheckInterval = useSettingsStore((s) => s.notifyCheckInterval);
+  const notifyGrades = useSettingsStore((s) => s.notifyGrades);
+  const notifyExams = useSettingsStore((s) => s.notifyExams);
+
+  function logNotify(msg: string) {
+    setNotifyTestLog((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+  }
+
+  function logNative(msg: string) {
+    setNativeTestLog((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+  }
 
   async function runDiagnostics() {
     setLoading(true);
@@ -224,6 +247,215 @@ export default function DebugPage() {
     toast.success(t("debug.jwxtJarCleared"));
     runDiagnostics();
   }
+
+  // ─── Notification Debug ────────────────────────────────────────────── //
+
+  async function handleTestDiff() {
+    setNotifyTestLog([]);
+    logNotify("=== Diff 逻辑测试 ===");
+    // 模拟 diffGrades
+    const oldGrades: Grade[] = [
+      { course_name: "高等数学A1", course_code: "MATH101", term: "2025-2026-1", is_major: true, is_pass: true, is_valid: true, is_degree_course: true },
+    ];
+    const newGrades: Grade[] = [
+      { course_name: "高等数学A1", course_code: "MATH101", term: "2025-2026-1", is_major: true, is_pass: true, is_valid: true, is_degree_course: true },
+      { course_name: "大学英语1", course_code: "ENG101", term: "2025-2026-1", is_major: true, is_pass: true, is_valid: true, is_degree_course: true },
+    ];
+    const gradeDiff = diffGrades(oldGrades, newGrades);
+    logNotify(`diffGrades: old=1, new=2, diff=${gradeDiff.length} → ${gradeDiff.map(g => g.course_name).join(", ") || "无新增"}`);
+
+    // 模拟 diffExams
+    const oldExams: Exam[] = [
+      { name: "高等数学A1", exam_date: "2026-01-10", exam_time: "09:00-11:00", exam_location: "主楼301" },
+    ];
+    const newExams: Exam[] = [
+      { name: "高等数学A1", exam_date: "2026-01-10", exam_time: "09:00-11:00", exam_location: "主楼301" },
+      { name: "大学英语1", exam_date: "2026-01-12", exam_time: "14:00-16:00", exam_location: "外语楼201" },
+    ];
+    const examDiff = diffExams(oldExams, newExams);
+    logNotify(`diffExams: old=1, new=2, diff=${examDiff.length} → ${examDiff.map(e => e.name).join(", ") || "无变更"}`);
+
+    // 模拟考试地点变更
+    const changedExams: Exam[] = [
+      { name: "高等数学A1", exam_date: "2026-01-10", exam_time: "09:00-11:00", exam_location: "主楼502" },
+    ];
+    const changeDiff = diffExams(oldExams, changedExams);
+    logNotify(`diffExams(地点变更): diff=${changeDiff.length} → ${changeDiff.map(e => `${e.name}@${e.exam_location}`).join(", ") || "无变更"}`);
+
+    logNotify("=== Diff 测试完成 ===");
+  }
+
+  async function handleTestCheckAndNotify() {
+    setNotifyTestLog([]);
+    logNotify("=== checkAndNotify 测试 ===");
+    if (!credential) {
+      logNotify("未登录，跳过");
+      return;
+    }
+    logNotify(`notifyEnabled=${notifyEnabled}, notifyGrades=${notifyGrades}, notifyExams=${notifyExams}`);
+
+    // 手动拉取并缓存一次数据（模拟首次运行）
+    try {
+      logNotify("拉取当前成绩...");
+      const grades = await getGrades(credential);
+      logNotify(`获取到 ${grades.length} 条成绩记录`);
+      const ck = cacheKey(["notify", "grades"]);
+      const cached = cacheGet<Grade[]>(ck, 365 * 24 * 60 * 60 * 1000);
+      logNotify(`缓存中: ${cached?.length ?? 0} 条`);
+      if (!cached) {
+        cacheSet(ck, grades);
+        logNotify("已写入缓存（首次运行，不会触发通知）");
+      } else {
+        const diff = diffGrades(cached, grades);
+        logNotify(`差异: ${diff.length} 条新增`);
+      }
+    } catch (e) {
+      logNotify(`成绩拉取失败: ${(e as Error).message}`);
+    }
+
+    try {
+      logNotify("拉取当前考试...");
+      const exams = await getExams(credential);
+      logNotify(`获取到 ${exams.length} 条考试记录`);
+      const ck = cacheKey(["notify", "exams"]);
+      const cached = cacheGet<Exam[]>(ck, 365 * 24 * 60 * 60 * 1000);
+      logNotify(`缓存中: ${cached?.length ?? 0} 条`);
+      if (!cached) {
+        cacheSet(ck, exams);
+        logNotify("已写入缓存（首次运行，不会触发通知）");
+      } else {
+        const diff = diffExams(cached, exams);
+        logNotify(`差异: ${diff.length} 条变更`);
+      }
+    } catch (e) {
+      logNotify(`考试拉取失败: ${(e as Error).message}`);
+    }
+    logNotify("=== checkAndNotify 测试完成 ===");
+  }
+
+  // ─── Native Plugin Debug ─────────────────────────────────────────────── //
+
+  async function handleNativeCheckPermission() {
+    if (!isCapacitor()) {
+      logNative("非 Capacitor 平台，跳过");
+      return;
+    }
+    try {
+      const result = await NotifyPlugin.checkPermissions();
+      setNativePermGranted(result.granted);
+      logNative(`checkPermissions: granted=${result.granted}`);
+    } catch (e) {
+      logNative(`checkPermissions 失败: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleNativeRequestPermission() {
+    if (!isCapacitor()) {
+      logNative("非 Capacitor 平台，跳过");
+      return;
+    }
+    try {
+      const result = await NotifyPlugin.requestPermissions();
+      setNativePermGranted(result.granted);
+      logNative(`requestPermissions: granted=${result.granted}`);
+    } catch (e) {
+      logNative(`requestPermissions 失败: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleNativeSetCastgc() {
+    if (!isCapacitor()) {
+      logNative("非 Capacitor 平台，跳过");
+      return;
+    }
+    try {
+      // 诊断：从 secure storage 直接读取 CASTGC
+      const { loadCASTGC } = await import("@/lib/secure-storage");
+      const storedTgc = await loadCASTGC();
+      logNative(`secureStorage CASTGC: ${storedTgc ? "存在" : "无"}`);
+
+      // 诊断：从 CapacitorCookies 读取
+      const { CapacitorCookies } = await import("@capacitor/core");
+      const cookies = await CapacitorCookies.getCookies({
+        url: "https://cer.ysu.edu.cn/authserver",
+      });
+      logNative(`CapacitorCookies: ${JSON.stringify(cookies)}`);
+
+      // 诊断：从 JS cookie jar 读取
+      const casCookies = await getCasJar().getAllCookies();
+      const jarCastgc = casCookies.find((c) => c.name === "CASTGC");
+      logNative(`JS cookie jar CASTGC: ${jarCastgc ? `存在(len=${jarCastgc.value.length})` : "无"}`);
+
+      // 诊断：直接调用 setCastgc
+      if (jarCastgc?.value) {
+        logNative(`直接调用 setCastgc, castgc len=${jarCastgc.value.length}`);
+        await NotifyPlugin.setCastgc({ castgc: jarCastgc.value });
+        logNative("setCastgc 调用完成");
+      } else {
+        logNative("跳过 setCastgc: castgc 为空");
+      }
+    } catch (e) {
+      logNative(`syncCastgcToNative 失败: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleNativeStartPolling() {
+    if (!isCapacitor()) {
+      logNative("非 Capacitor 平台，跳过");
+      return;
+    }
+    try {
+      await startNativePolling();
+      logNative(`startNativePolling: 已启动 (interval=${notifyCheckInterval}min, grades=${notifyGrades}, exams=${notifyExams})`);
+    } catch (e) {
+      logNative(`startNativePolling 失败: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleNativeStopPolling() {
+    if (!isCapacitor()) {
+      logNative("非 Capacitor 平台，跳过");
+      return;
+    }
+    try {
+      await stopNativePolling();
+      logNative("stopNativePolling: 已停止");
+    } catch (e) {
+      logNative(`stopNativePolling 失败: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleNativeRunWorker() {
+    if (!isCapacitor()) {
+      logNative("非 Capacitor 平台，跳过");
+      return;
+    }
+    try {
+      logNative("正在直接触发 Worker...");
+      await NotifyPlugin.executeOnce();
+      logNative("Worker 已触发，稍后查看通知栏");
+    } catch (e) {
+      logNative(`触发 Worker 失败: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleNativeGetState() {
+    if (!isCapacitor()) {
+      logNative("非 Capacitor 平台，跳过");
+      return;
+    }
+    try {
+      const result = await NotifyPlugin.checkPermissions();
+      logNative(`权限状态: granted=${result.granted}`);
+    } catch (e) {
+      logNative(`获取状态失败: ${(e as Error).message}`);
+    }
+  }
+
+  function handleNativeClearLog() {
+    setNativeTestLog([]);
+  }
+
 
   function statusBadge(value: boolean | null | { ok: boolean | null; error?: string }) {
     if (typeof value === "boolean") {
@@ -431,6 +663,149 @@ export default function DebugPage() {
                   </ul>
                 )}
               </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* ── Notification Debug ─────────────────────────────── */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Bell className="size-4" />
+                通知模块状态
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">notifyEnabled</span>
+                {statusBadge(notifyEnabled)}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">notifyCheckInterval</span>
+                <span className="font-mono text-xs">{notifyCheckInterval} 分钟</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">notifyGrades</span>
+                {statusBadge(notifyGrades)}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">notifyExams</span>
+                {statusBadge(notifyExams)}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">isCapacitor</span>
+                {statusBadge(isCapacitor())}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">缓存成绩</span>
+                <span className="font-mono text-xs">
+                  {(() => {
+                    const cached = cacheGet<Grade[]>(cacheKey(["notify", "grades"]), 365 * 24 * 60 * 60 * 1000);
+                    return cached ? `${cached.length} 条` : "无";
+                  })()}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">缓存考试</span>
+                <span className="font-mono text-xs">
+                  {(() => {
+                    const cached = cacheGet<Exam[]>(cacheKey(["notify", "exams"]), 365 * 24 * 60 * 60 * 1000);
+                    return cached ? `${cached.length} 条` : "无";
+                  })()}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Play className="size-4" />
+                通知模块测试
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" onClick={handleTestDiff}>
+                  Diff 逻辑
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => toast("测试 Toast", { description: "Toast 通知工作正常" })}>
+                  <Bell className="size-3.5 mr-1" />
+                  Toast
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleTestCheckAndNotify}>
+                  <Play className="size-3.5 mr-1" />
+                  checkAndNotify
+                </Button>
+              </div>
+
+              {notifyTestLog.length > 0 && (
+                <ScrollArea className="h-48 rounded-md border bg-muted/30 p-2">
+                  <pre className="text-[10px] font-mono whitespace-pre-wrap">
+                    {notifyTestLog.join("\n")}
+                  </pre>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── Native Plugin Debug ─────────────────────────────── */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Smartphone className="size-4" />
+                原生插件测试
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" onClick={handleNativeCheckPermission}>
+                  <Shield className="size-3.5 mr-1" />
+                  检查权限
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleNativeRequestPermission}>
+                  <Shield className="size-3.5 mr-1" />
+                  请求权限
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleNativeSetCastgc}>
+                  <Send className="size-3.5 mr-1" />
+                  同步 CASTGC
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleNativeStartPolling}>
+                  <Power className="size-3.5 mr-1" />
+                  启动轮询
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleNativeStopPolling}>
+                  <Power className="size-3.5 mr-1" />
+                  停止轮询
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleNativeRunWorker}>
+                  <Play className="size-3.5 mr-1" />
+                  立即执行
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleNativeClearLog}>
+                  <Trash2 className="size-3.5 mr-1" />
+                  清空日志
+                </Button>
+              </div>
+
+              {nativePermGranted !== null && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">通知权限:</span>
+                  {nativePermGranted ? (
+                    <span className="text-green-600">已授予</span>
+                  ) : (
+                    <span className="text-destructive">未授予</span>
+                  )}
+                </div>
+              )}
+
+              {nativeTestLog.length > 0 && (
+                <ScrollArea className="h-48 rounded-md border bg-muted/30 p-2">
+                  <pre className="text-[10px] font-mono whitespace-pre-wrap">
+                    {nativeTestLog.join("\n")}
+                  </pre>
+                </ScrollArea>
+              )}
             </CardContent>
           </Card>
 

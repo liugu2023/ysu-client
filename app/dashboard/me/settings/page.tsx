@@ -23,11 +23,13 @@ import { useSettingsStore, type LandingPage } from "@/lib/settings-store";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { resetSDK } from "@/lib/sdk";
+import { isCapacitor } from "@/lib/platform";
 
 import { syncWidgetSettingsToWidget } from "@/lib/widget-bridge";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import { useUpdateStore } from "@/lib/update-store";
 import { useTheme } from "next-themes";
+import { startNativePolling, stopNativePolling } from "@/lib/notify";
 import {
   LayoutDashboard,
   Calendar,
@@ -41,6 +43,8 @@ import {
   Clock,
   CalendarClock,
   UserCircle,
+  Bell,
+  Timer,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -58,6 +62,15 @@ export default function SettingsPage() {
   const setWidgetShowNextDaySchedule = useSettingsStore((s) => s.setWidgetShowNextDaySchedule);
   const [localSyncHours, setLocalSyncHours] = useState(String(widgetSyncReminderHours));
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  const notifyEnabled = useSettingsStore((s) => s.notifyEnabled);
+  const setNotifyEnabled = useSettingsStore((s) => s.setNotifyEnabled);
+  const notifyCheckInterval = useSettingsStore((s) => s.notifyCheckInterval);
+  const setNotifyCheckInterval = useSettingsStore((s) => s.setNotifyCheckInterval);
+  const notifyGrades = useSettingsStore((s) => s.notifyGrades);
+  const setNotifyGrades = useSettingsStore((s) => s.setNotifyGrades);
+  const notifyExams = useSettingsStore((s) => s.notifyExams);
+  const setNotifyExams = useSettingsStore((s) => s.setNotifyExams);
 
   function commitSyncHours() {
     const val = parseInt(localSyncHours, 10);
@@ -249,6 +262,96 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </Section>
+
+      {/* 通知设置 — 仅 Capacitor 平台 */}
+      {isCapacitor() && (
+        <Section title={t("settings.notifyTitle")}>
+          <Card>
+            <CardContent className="flex flex-col py-1">
+              {/* 通知开关 */}
+              <div className="flex items-center gap-3 py-3">
+                <Bell className="size-5 shrink-0 text-muted-foreground" />
+                <div className="flex flex-1 flex-col">
+                  <span className="text-sm">{t("settings.notifyEnabled")}</span>
+                  <span className="text-xs text-muted-foreground">{t("settings.notifyEnabledDesc")}</span>
+                </div>
+                <ToggleGroup
+                  type="single"
+                  value={notifyEnabled ? "on" : "off"}
+                  onValueChange={(v) => {
+                    if (!v) return;
+                    const enabled = v === "on";
+                    setNotifyEnabled(enabled);
+                    if (enabled) {
+                      startNativePolling().catch(() => {});
+                    } else {
+                      stopNativePolling().catch(() => {});
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  <ToggleGroupItem value="on" className="text-xs">
+                    {t("settings.toggleOn")}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="off" className="text-xs">
+                    {t("settings.toggleOff")}
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+
+              {/* 检查频率 */}
+              {notifyEnabled && (
+                <div className="flex items-center gap-3 border-t border-border py-3">
+                  <Timer className="size-5 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 text-sm">{t("settings.notifyInterval")}</span>
+                  <ToggleGroup
+                    type="single"
+                    value={String(notifyCheckInterval)}
+                    onValueChange={(v) => v && setNotifyCheckInterval(Number(v))}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <ToggleGroupItem value="30" className="text-xs">30</ToggleGroupItem>
+                    <ToggleGroupItem value="60" className="text-xs">60</ToggleGroupItem>
+                    <ToggleGroupItem value="120" className="text-xs">120</ToggleGroupItem>
+                    <ToggleGroupItem value="360" className="text-xs">360</ToggleGroupItem>
+                  </ToggleGroup>
+                  <span className="text-xs text-muted-foreground">{t("settings.notifyIntervalUnit")}</span>
+                </div>
+              )}
+
+              {/* 监听内容 */}
+              {notifyEnabled && (
+                <div className="flex items-center gap-3 border-t border-border py-3">
+                  <CalendarClock className="size-5 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 text-sm">{t("settings.notifyContent")}</span>
+                  <ToggleGroup
+                    type="multiple"
+                    value={[
+                      ...(notifyGrades ? ["grades"] : []),
+                      ...(notifyExams ? ["exams"] : []),
+                    ]}
+                    onValueChange={(v) => {
+                      setNotifyGrades(v.includes("grades"));
+                      setNotifyExams(v.includes("exams"));
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <ToggleGroupItem value="grades" className="text-xs">
+                      {t("settings.notifyGrades")}
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="exams" className="text-xs">
+                      {t("settings.notifyExams")}
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Section>
+      )}
 
       <Section title={t("me.sectionAccount")}>
         <Card>
