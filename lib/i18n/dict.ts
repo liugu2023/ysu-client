@@ -85,6 +85,15 @@ export const zh = {
     notifyContent: "监听内容",
     general: "通用",
     widget: "小组件",
+    systemPermissions: "系统权限",
+    batteryOptimization: "电池优化",
+    batteryOptimizationDesc: "关闭电池优化以确保后台通知正常工作",
+    batteryOptimizationIgnored: "已关闭",
+    batteryOptimizationNotIgnored: "未关闭",
+    autoStart: "自启动",
+    autoStartDesc: "允许自启动以确保后台通知不被系统杀死",
+    autoStartDialogTitle: "开启自启动",
+    autoStartDialogContent: "请前往系统设置，搜索\"自启动\"，找到本应用并开启。不同品牌手机的路径可能不同，通常在 设置 → 应用 → 自启动管理 中。",
     notifyContentTitle: "成绩/考试通知",
     classReminderTitle: "上课提醒",
     classReminderEnabled: "开启上课提醒",
@@ -212,6 +221,9 @@ export const zh = {
   logout: {
     confirm: "确定要退出登录吗？",
     cancel: "取消",
+  },
+  dialog: {
+    ok: "知道了",
   },
   dashboard: {
     currentWeek: "第 {week} 周",
@@ -654,6 +666,15 @@ export const en = {
     notifyContent: "Content to Watch",
     general: "General",
     widget: "Widget",
+    systemPermissions: "System Permissions",
+    batteryOptimization: "Battery Optimization",
+    batteryOptimizationDesc: "Disable battery optimization to ensure background notifications work",
+    batteryOptimizationIgnored: "Disabled",
+    batteryOptimizationNotIgnored: "Enabled",
+    autoStart: "Auto-start",
+    autoStartDesc: "Allow auto-start to prevent the system from killing background notifications",
+    autoStartDialogTitle: "Enable Auto-start",
+    autoStartDialogContent: "Please go to system settings, search for \"Auto-start\", find this app and enable it. The path varies by brand, usually in Settings → Apps → Auto-start management.",
     notifyContentTitle: "Grade/Exam Notifications",
     classReminderTitle: "Class Reminder",
     classReminderEnabled: "Enable class reminder",
@@ -781,6 +802,9 @@ export const en = {
   logout: {
     confirm: "Are you sure you want to log out?",
     cancel: "Cancel",
+  },
+  dialog: {
+    ok: "Got it",
   },
   dashboard: {
     currentWeek: "Week {week}",

@@ -1,6 +1,7 @@
 package com.youwenqwq.ysuclient.notify
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -285,4 +286,50 @@ class YsuNotifyPlugin : Plugin() {
         ret.put("granted", granted)
         call.resolve(ret)
     }
+
+    // ─── Battery optimization & auto-start ─────────────────────────────────
+
+    @PluginMethod
+    fun checkBatteryOptimization(call: PluginCall) {
+        val ret = JSObject()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            ret.put("ignored", pm.isIgnoringBatteryOptimizations(context.packageName))
+        } else {
+            ret.put("ignored", true)
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun requestIgnoreBatteryOptimization(call: PluginCall) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(context.packageName)) {
+                try {
+                    val intent = android.content.Intent(
+                        android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        android.net.Uri.parse("package:${context.packageName}")
+                    )
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to open battery optimization settings", e)
+                    // Fallback to app details settings
+                    try {
+                        val intent = android.content.Intent(
+                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            android.net.Uri.parse("package:${context.packageName}")
+                        )
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    } catch (e2: Exception) {
+                        Log.e(TAG, "Failed to open app details settings", e2)
+                    }
+                }
+            }
+        }
+        call.resolve()
+    }
+
 }

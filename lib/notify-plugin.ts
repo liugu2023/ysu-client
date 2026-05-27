@@ -34,6 +34,10 @@ export interface YsuNotifyPlugin {
   checkPermissions(): Promise<{ granted: boolean }>;
   requestPermissions(): Promise<{ granted: boolean }>;
 
+  // ─── Battery optimization ──────────────────────────────────────────────
+  checkBatteryOptimization(): Promise<{ ignored: boolean }>;
+  requestIgnoreBatteryOptimization(): Promise<void>;
+
   // ─── Class alarm ────────────────────────────────────────────────────────
   scheduleClassAlarms(options: { alarmsJson: string }): Promise<void>;
   cancelClassAlarms(): Promise<void>;

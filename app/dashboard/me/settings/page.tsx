@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import { useUpdateStore } from "@/lib/update-store";
 import { useTheme } from "next-themes";
 import { startNotifyIfNeeded, stopNativePolling, triggerNotifyCheck } from "@/lib/notify";
+import { NotifyPlugin } from "@/lib/notify-plugin";
 import {
   LayoutDashboard,
   Calendar,
@@ -47,6 +48,8 @@ import {
   Bell,
   Timer,
   AlarmClock,
+  Battery,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -78,6 +81,30 @@ export default function SettingsPage() {
   const setClassReminderMinutes = useSettingsStore((s) => s.setClassReminderMinutes);
   const classReminderDays = useSettingsStore((s) => s.classReminderDays);
   const setClassReminderDays = useSettingsStore((s) => s.setClassReminderDays);
+  const [batteryIgnored, setBatteryIgnored] = useState<boolean | null>(null);
+  const [autoStartDialogOpen, setAutoStartDialogOpen] = useState(false);
+
+  // Check battery optimization status on mount and when returning from settings
+  useEffect(() => {
+    if (!isCapacitor()) return;
+
+    NotifyPlugin.checkBatteryOptimization().then(({ ignored }) => {
+      setBatteryIgnored(ignored);
+    }).catch(() => {});
+
+    let listener: { remove(): void } | undefined;
+    import("@capacitor/app").then(({ App }) => {
+      App.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) {
+          NotifyPlugin.checkBatteryOptimization().then(({ ignored }) => {
+            setBatteryIgnored(ignored);
+          }).catch(() => {});
+        }
+      }).then((h) => { listener = h; });
+    });
+
+    return () => { listener?.remove(); };
+  }, []);
 
   function handleLogout() {
     setLogoutDialogOpen(false);
@@ -252,8 +279,46 @@ export default function SettingsPage() {
         <Section title={t("settings.notifyTitle")}>
           <Card>
             <CardContent className="flex flex-col py-1">
-              {/* 成绩/考试通知 */}
+              {/* 系统权限 */}
               <h3 className="flex items-center gap-2 px-0.5 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">
+                {t("settings.systemPermissions")}
+              </h3>
+
+              {/* 电池优化 */}
+              <button
+                type="button"
+                onClick={() => NotifyPlugin.requestIgnoreBatteryOptimization()}
+                className="flex items-center gap-3 py-3 text-left transition-colors active:bg-muted/60"
+              >
+                <Battery className="size-5 shrink-0 text-muted-foreground" />
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-sm">{t("settings.batteryOptimization")}</span>
+                  <span className="text-xs text-muted-foreground">{t("settings.batteryOptimizationDesc")}</span>
+                </div>
+                {batteryIgnored !== null && (
+                  <span className={`text-xs ${batteryIgnored ? "text-green-600" : "text-orange-500"}`}>
+                    {batteryIgnored ? t("settings.batteryOptimizationIgnored") : t("settings.batteryOptimizationNotIgnored")}
+                  </span>
+                )}
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </button>
+
+              {/* 自启动 */}
+              <button
+                type="button"
+                onClick={() => setAutoStartDialogOpen(true)}
+                className="flex items-center gap-3 border-t border-border py-3 text-left transition-colors active:bg-muted/60"
+              >
+                <ShieldCheck className="size-5 shrink-0 text-muted-foreground" />
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-sm">{t("settings.autoStart")}</span>
+                  <span className="text-xs text-muted-foreground">{t("settings.autoStartDesc")}</span>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </button>
+              
+              {/* 成绩/考试通知 */}
+              <h3 className="flex items-center gap-2 border-t border-border px-0.5 pt-3 pb-0.5 text-xs font-medium text-muted-foreground">
                 {t("settings.notifyContentTitle")}
               </h3>
 
@@ -414,6 +479,20 @@ export default function SettingsPage() {
             </Button>
             <Button variant="destructive" onClick={handleLogout}>
               {t("app.logout")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={autoStartDialogOpen} onOpenChange={setAutoStartDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("settings.autoStartDialogTitle")}</DialogTitle>
+            <DialogDescription>{t("settings.autoStartDialogContent")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setAutoStartDialogOpen(false)}>
+              {t("dialog.ok")}
             </Button>
           </DialogFooter>
         </DialogContent>
