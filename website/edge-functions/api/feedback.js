@@ -54,6 +54,8 @@ export async function onRequestPost({ request, env }) {
       rating,
       text: String(body.text || '').slice(0, 500),
       version: String(body.version || '').slice(0, 32),
+      viewport: String(body.viewport || '').slice(0, 32),
+      screen: String(body.screen || '').slice(0, 32),
       platform: String(body.platform || '').slice(0, 16),
       ua,
       ts: Date.now(),
