@@ -361,6 +361,11 @@ export default function SettingsPage() {
                   bordered
                 />
               )}
+              {notifyEnabled && (
+                <p className="px-0.5 pb-1 text-xs text-muted-foreground">
+                  {t("settings.notifyIntervalHint")}
+                </p>
+              )}
 
               {/* 监听内容 */}
               {notifyEnabled && (
@@ -411,7 +416,10 @@ export default function SettingsPage() {
               </h3>
               <div className="flex items-center gap-3 py-3">
                 <AlarmClock className="size-5 shrink-0 text-muted-foreground" />
-                <span className="flex-1 text-sm">{t("settings.classReminderEnabled")}</span>
+                <div className="flex flex-1 flex-col">
+                  <span className="text-sm">{t("settings.classReminderEnabled")}</span>
+                  <span className="text-xs text-muted-foreground">{t("settings.classReminderHint")}</span>
+                </div>
                 <Switch
                   checked={classReminderEnabled}
                   onCheckedChange={setClassReminderEnabled}
