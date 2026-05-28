@@ -170,26 +170,6 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
-    // Fallback: scan recent 7 days for legacy ids
-    const today = new Date();
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const key = `feedback:${dateStr}`;
-      const data = await STATS_KV.get(key, 'json');
-      if (!data) continue;
-      const entry = data.entries?.find((e) => e.id === id);
-      if (entry) {
-        entry.adminReply = reply;
-        entry.repliedAt = Date.now();
-        await STATS_KV.put(key, JSON.stringify(data));
-        return new Response(JSON.stringify({ success: true }), {
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-    }
-
     return new Response(
       JSON.stringify({ error: 'Feedback not found' }),
       { status: 404, headers: { 'content-type': 'application/json' } }

@@ -151,34 +151,6 @@ export async function onRequestGet({ request, env }) {
       }
     }
 
-    // Fallback: scan recent 7 days for legacy ids
-    const today = new Date();
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const key = `feedback:${dateStr}`;
-      const data = await STATS_KV.get(key, 'json');
-      if (!data) continue;
-      const entry = data.entries?.find((e) => e.id === id && (!ts || e.ts === ts));
-      if (entry) {
-        return new Response(
-          JSON.stringify({
-            ts: entry.ts,
-            replied: !!entry.adminReply,
-            adminReply: entry.adminReply || null,
-            repliedAt: entry.repliedAt || null,
-          }),
-          {
-            headers: {
-              'content-type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-            },
-          }
-        );
-      }
-    }
-
     return new Response(
       JSON.stringify({ error: 'Not found' }),
       {
