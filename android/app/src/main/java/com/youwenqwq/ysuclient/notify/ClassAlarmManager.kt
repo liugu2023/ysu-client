@@ -19,6 +19,10 @@ object ClassAlarmManager {
             cancelAllAlarms(context)
             UnifiedCache.putString(context, UnifiedCache.KEY_CLASS_ALARMS, alarmsJson)
 
+            // Check if exact alarms are permitted (API 31+)
+            val canUseExact = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S
+                    || alarmManager.canScheduleExactAlarms()
+
             for (i in 0 until alarms.length()) {
                 val alarm = alarms.getJSONObject(i)
                 val alarmId = alarm.optString("alarmId", "")
@@ -36,21 +40,21 @@ object ClassAlarmManager {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
-                try {
+                if (canUseExact) {
                     alarmManager.setExactAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         alarmTime,
                         pendingIntent
                     )
-                    Log.d(TAG, "Scheduled alarm $alarmId at $alarmTime")
-                } catch (e: SecurityException) {
-                    Log.w(TAG, "Exact alarm not permitted, using inexact alarm")
+                } else {
+                    // Fallback: inexact alarm, may be deferred ~15 min in doze
                     alarmManager.setAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         alarmTime,
                         pendingIntent
                     )
                 }
+                Log.d(TAG, "Scheduled alarm $alarmId at $alarmTime (exact=$canUseExact)")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error scheduling alarms", e)

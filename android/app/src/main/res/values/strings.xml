@@ -39,8 +39,6 @@
     <string name="class_alarm_channel_name">上课提醒</string>
     <string name="class_alarm_channel_desc">课前提醒通知</string>
     <string name="class_alarm_text">%1$d分钟后上课</string>
-    <string name="class_alarm_text_classroom">%1$d分钟后上课 · %2$s</string>
-    <string name="class_alarm_text_classroom_time">%1$d分钟后上课 · %2$s · %3$s 开始</string>
     <string name="notify_fallback_course_name">未知课程</string>
     <string name="notify_fallback_exam_name">未知考试</string>
     <string name="notify_fallback_alarm_course">课程</string>

@@ -108,13 +108,14 @@ class ClassAlarmReceiver : BroadcastReceiver() {
         createNotificationChannel(ctx)
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val content = when {
-            classroom.isNotEmpty() && startTime.isNotEmpty() ->
-                ctx.getString(R.string.class_alarm_text_classroom_time, remindMinutes, classroom, startTime)
-            classroom.isNotEmpty() ->
-                ctx.getString(R.string.class_alarm_text_classroom, remindMinutes, classroom)
-            else ->
-                ctx.getString(R.string.class_alarm_text, remindMinutes)
+        val parts = buildList {
+            if (startTime.isNotEmpty()) add(startTime)
+            if (classroom.isNotEmpty()) add(classroom)
+        }
+        val content = if (parts.isNotEmpty()) {
+            parts.joinToString(" · ")
+        } else {
+            ctx.getString(R.string.class_alarm_text, remindMinutes)
         }
 
         val openIntent = Intent(ctx, MainActivity::class.java).apply {
