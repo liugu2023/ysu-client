@@ -176,8 +176,10 @@ class YsuNotifyPlugin : Plugin() {
 
     @PluginMethod
     fun resumePolling(call: PluginCall) {
-        val (interval, checkGrades, checkExams) = NotifyHelper.getSettings(context)
+        val (interval, checkGrades, checkExams, notifyNetworkError) = NotifyHelper.getSettingsWithNetworkError(context)
         val workInterval = interval.coerceAtLeast(15)
+
+        NotifyHelper.saveSettings(context, workInterval, checkGrades, checkExams, notifyNetworkError)
 
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)

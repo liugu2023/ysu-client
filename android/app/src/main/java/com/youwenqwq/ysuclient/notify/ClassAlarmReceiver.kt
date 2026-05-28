@@ -28,6 +28,7 @@ class ClassAlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: return
         Log.d(TAG, "Alarm triggered: $alarmId")
 
+        val pendingResult = goAsync()
         try {
             val alarmsJson = UnifiedCache.getString(context, UnifiedCache.KEY_CLASS_ALARMS, "[]")
             val alarms = JSONArray(alarmsJson)
@@ -40,6 +41,16 @@ class ClassAlarmReceiver : BroadcastReceiver() {
                     break
                 }
             }
+
+            // Remove triggered alarm from cache (regardless of validity)
+            val updatedAlarms = JSONArray()
+            for (i in 0 until alarms.length()) {
+                val obj = alarms.getJSONObject(i)
+                if (obj.optString("alarmId") != alarmId) {
+                    updatedAlarms.put(obj)
+                }
+            }
+            UnifiedCache.putString(context, UnifiedCache.KEY_CLASS_ALARMS, updatedAlarms.toString())
 
             if (alarmConfig == null) {
                 Log.w(TAG, "Alarm config not found for $alarmId")
@@ -83,18 +94,10 @@ class ClassAlarmReceiver : BroadcastReceiver() {
 
             sendClassNotification(context, courseName, classroom, startTime, remindMinutes)
 
-            // Remove triggered alarm from cache
-            val updatedAlarms = JSONArray()
-            for (i in 0 until alarms.length()) {
-                val obj = alarms.getJSONObject(i)
-                if (obj.optString("alarmId") != alarmId) {
-                    updatedAlarms.put(obj)
-                }
-            }
-            UnifiedCache.putString(context, UnifiedCache.KEY_CLASS_ALARMS, updatedAlarms.toString())
-
         } catch (e: Exception) {
             Log.e(TAG, "Error handling class alarm", e)
+        } finally {
+            pendingResult.finish()
         }
     }
 

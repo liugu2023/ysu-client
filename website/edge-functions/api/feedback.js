@@ -48,7 +48,8 @@ export async function onRequestPost({ request, env }) {
     const ua = String(body.ua || '').slice(0, 512) || request.headers.get('user-agent') || 'unknown';
     const key = `feedback:${date}`;
     const existing = await STATS_KV.get(key);
-    let data = existing ? JSON.parse(existing) : { entries: [] };
+    let data = { entries: [] };
+    try { if (existing) data = JSON.parse(existing); } catch { /* corrupted KV */ }
 
     const rating = Number(body.rating);
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
@@ -141,21 +142,24 @@ export async function onRequestGet({ request, env }) {
       const key = `feedback:${dateStr}`;
       const existing = await STATS_KV.get(key);
       if (existing) {
-        const data = JSON.parse(existing);
-        const entry = data.entries?.find((e) => e.id === id);
-        if (entry) {
-          return new Response(
-            JSON.stringify({
-              adminReply: entry.adminReply || null,
-              repliedAt: entry.repliedAt || null,
-            }),
-            {
-              headers: {
-                'content-type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-              },
-            }
-          );
+        let data;
+        try { data = JSON.parse(existing); } catch { /* skip corrupted */ }
+        if (data) {
+          const entry = data.entries?.find((e) => e.id === id);
+          if (entry) {
+            return new Response(
+              JSON.stringify({
+                adminReply: entry.adminReply || null,
+                repliedAt: entry.repliedAt || null,
+              }),
+              {
+                headers: {
+                  'content-type': 'application/json',
+                  'Access-Control-Allow-Origin': '*',
+                },
+              }
+            );
+          }
         }
       }
     }
@@ -169,7 +173,8 @@ export async function onRequestGet({ request, env }) {
       const key = `feedback:${dateStr}`;
       const existing = await STATS_KV.get(key);
       if (!existing) continue;
-      const data = JSON.parse(existing);
+      let data;
+      try { data = JSON.parse(existing); } catch { continue; }
       const entry = data.entries?.find((e) => e.id === id);
       if (entry) {
         return new Response(

@@ -71,8 +71,9 @@ object NotifyHelper {
     private fun Cookie.hasExpired(): Boolean = expiresAt < System.currentTimeMillis()
 
     private fun domainMatches(cookieDomain: String, host: String): Boolean {
-        val cd = cookieDomain.removePrefix(".")
-        return host == cd || host.endsWith(".$cd")
+        val cd = cookieDomain.removePrefix(".").lowercase()
+        val h = host.lowercase()
+        return h == cd || h.endsWith(".$cd")
     }
 
     private fun pathMatches(cookiePath: String, requestPath: String): Boolean {
@@ -254,7 +255,8 @@ object NotifyHelper {
     private fun httpGet(url: String): HttpResult {
         client.newCall(buildGet(url)).execute().use { resp ->
             val body = resp.body?.string() ?: ""
-            Log.d(TAG, "httpGet: code=${resp.code}, url=${resp.request.url}")
+            val u = resp.request.url
+            Log.d(TAG, "httpGet: code=${resp.code}, host=${u.host}, path=${u.encodedPath}")
             return HttpResult(resp.code, body, resp.request.url.toString())
         }
     }
@@ -298,14 +300,14 @@ object NotifyHelper {
         cookieStore.clear()
 
         // 种入 CASTGC
-        val cerHost = getCerBase(context).removePrefix("https://").removePrefix("http://")
+        val cerHost = getCerBase(context).toHttpUrl().host
         val castgcCookie = Cookie.Builder()
             .domain(cerHost)
             .path("/authserver")
             .name("CASTGC")
             .value(castgc)
             .build()
-        cookieStore[".$cerHost|/authserver"] = mutableListOf(castgcCookie)
+        cookieStore["$cerHost|/authserver"] = mutableListOf(castgcCookie)
 
         val portalUrl = getPortalUrl(context)
         val cerBase = getCerBase(context)

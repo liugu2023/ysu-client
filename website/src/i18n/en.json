@@ -83,7 +83,7 @@
     },
     "analytics": {
       "title": "Anonymous Analytics",
-      "content": "This app optionally collects anonymous usage statistics to understand daily active users and device distribution. Statistics include only launch count and User-Agent information, with no personally identifiable information, student IDs, grades, or academic data. Data is fully anonymous and stored in EdgeOne Pages KV, expiring automatically after 90 days. Users can disable this feature at any time within the app."
+      "content": "This app optionally collects anonymous usage statistics to understand daily active users and device distribution. Statistics include only launch count and User-Agent information, with no personally identifiable information, student IDs, grades, or academic data. Data is fully anonymous and stored in EdgeOne Pages KV. Users can disable this feature at any time within the app."
     }
   },
   "faq": {

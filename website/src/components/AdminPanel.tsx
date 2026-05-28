@@ -43,7 +43,7 @@ export default function AdminPanel() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem('admin_password');
+    const saved = sessionStorage.getItem('admin_password');
     if (saved) setSavedPassword(saved);
   }, []);
 
@@ -58,7 +58,7 @@ export default function AdminPanel() {
       if (!res.ok) {
         throw new Error('密码错误');
       }
-      localStorage.setItem('admin_password', password);
+      sessionStorage.setItem('admin_password', password);
       setSavedPassword(password);
     } catch (err: any) {
       setLoginError(err.message || '验证失败');
@@ -66,7 +66,7 @@ export default function AdminPanel() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_password');
+    sessionStorage.removeItem('admin_password');
     setSavedPassword('');
     setPassword('');
     setData(null);

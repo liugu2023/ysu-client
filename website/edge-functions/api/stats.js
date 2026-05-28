@@ -34,7 +34,8 @@ export async function onRequestPost({ request, env }) {
 
     const key = `stats:${date}`;
     const existing = await STATS_KV.get(key);
-    let data = existing ? JSON.parse(existing) : { count: 0, entries: [] };
+    let data = { count: 0, entries: [] };
+    try { if (existing) data = JSON.parse(existing); } catch { /* corrupted KV */ }
 
     // Migrate old format if needed
     if (data.userAgents && !data.entries) {
@@ -90,7 +91,8 @@ export async function onRequestGet({ env }) {
     const date = new Date().toISOString().split('T')[0];
     const key = `stats:${date}`;
     const existing = await STATS_KV.get(key);
-    const data = existing ? JSON.parse(existing) : { count: 0 };
+    let data = { count: 0 };
+    try { if (existing) data = JSON.parse(existing); } catch { /* corrupted KV */ }
 
     return new Response(JSON.stringify({ count: data.count || 0 }), {
       headers: {

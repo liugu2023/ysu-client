@@ -17,9 +17,13 @@ export async function syncFeedbackReplies(): Promise<void> {
     if (result === null) continue;
 
     if ("notFound" in result) {
-      ids = ids.filter((fid) => fid !== id);
-      history = history.filter((h) => h.id !== id);
-      changed = true;
+      // Only remove entries older than 30 days to avoid deleting on transient 404s
+      const entry = history.find((h) => h.id === id);
+      if (entry && Date.now() - entry.ts > 30 * 24 * 60 * 60 * 1000) {
+        ids = ids.filter((fid) => fid !== id);
+        history = history.filter((h) => h.id !== id);
+        changed = true;
+      }
       continue;
     }
 
@@ -34,8 +38,9 @@ export async function syncFeedbackReplies(): Promise<void> {
           repliedAt: result.repliedAt,
         };
 
-        // Toast only if this reply hasn't been read yet
+        // Toast only if this reply hasn't been notified yet
         if (!wasReplied && !history[idx].notifiedAt) {
+          history[idx] = { ...history[idx], notifiedAt: Date.now() };
           toast.success(getText("about.feedbackNewReply"), {
             duration: 8000,
           });

@@ -52,10 +52,12 @@ export async function onRequestGet({ request, env }) {
           for (const k of result.keys) {
             const val = await STATS_KV.get(k.key);
             if (!val) continue;
-            const data = JSON.parse(val);
-            if (Array.isArray(data.entries)) {
-              all.push(...data.entries);
-            }
+            try {
+              const data = JSON.parse(val);
+              if (Array.isArray(data.entries)) {
+                all.push(...data.entries);
+              }
+            } catch { /* skip corrupted key */ }
           }
           cursor = result.cursor;
         } while (cursor);
@@ -160,15 +162,18 @@ export async function onRequestPost({ request, env }) {
       const key = `feedback:${dateStr}`;
       const existing = await STATS_KV.get(key);
       if (existing) {
-        const data = JSON.parse(existing);
-        const entry = data.entries?.find((e) => e.id === id);
-        if (entry) {
-          entry.adminReply = reply;
-          entry.repliedAt = Date.now();
-          await STATS_KV.put(key, JSON.stringify(data));
-          return new Response(JSON.stringify({ success: true }), {
-            headers: { 'content-type': 'application/json' },
-          });
+        let data;
+        try { data = JSON.parse(existing); } catch { /* skip corrupted */ }
+        if (data) {
+          const entry = data.entries?.find((e) => e.id === id);
+          if (entry) {
+            entry.adminReply = reply;
+            entry.repliedAt = Date.now();
+            await STATS_KV.put(key, JSON.stringify(data));
+            return new Response(JSON.stringify({ success: true }), {
+              headers: { 'content-type': 'application/json' },
+            });
+          }
         }
       }
     }
@@ -182,7 +187,8 @@ export async function onRequestPost({ request, env }) {
       const key = `feedback:${dateStr}`;
       const existing = await STATS_KV.get(key);
       if (!existing) continue;
-      const data = JSON.parse(existing);
+      let data;
+      try { data = JSON.parse(existing); } catch { continue; }
       const entry = data.entries?.find((e) => e.id === id);
       if (entry) {
         entry.adminReply = reply;

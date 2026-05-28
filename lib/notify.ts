@@ -161,6 +161,22 @@ function parseTimeToMinutes(timeStr: string): number {
   return parseInt(parts[0]!, 10) * 60 + parseInt(parts[1]!, 10);
 }
 
+function isCourseActiveInWeek(course: Course, week: number): boolean {
+  const weeksStr = course.weeks;
+  if (!weeksStr) return true;
+  const weeks = new Set<number>();
+  for (const part of weeksStr.replace(/[周第\s]/g, "").split(/[,，]/)) {
+    if (part.includes("-")) {
+      const [start, end] = part.split("-").map((s) => parseInt(s, 10));
+      if (!isNaN(start) && !isNaN(end)) for (let w = start; w <= end; w++) weeks.add(w);
+    } else {
+      const n = parseInt(part, 10);
+      if (!isNaN(n)) weeks.add(n);
+    }
+  }
+  return weeks.size === 0 || weeks.has(week);
+}
+
 export function computeClassAlarms(
   courses: Course[],
   currentWeek: CurrentWeek | null,
@@ -172,10 +188,15 @@ export function computeClassAlarms(
   const now = new Date();
   const periodMap = new Map(periods.map((p) => [p.section, p]));
   const todayWeekday = now.getDay() === 0 ? 7 : now.getDay();
+  const baseWeek = currentWeek?.week ?? 1;
 
   for (let dayOffset = 0; dayOffset < days; dayOffset++) {
     const targetWeekday = ((todayWeekday - 1 + dayOffset) % 7) + 1;
-    const dayCourses = courses.filter((c) => c.week_day === targetWeekday);
+    const weekOverflow = Math.floor((todayWeekday - 1 + dayOffset) / 7);
+    const targetWeek = baseWeek + weekOverflow;
+    const dayCourses = courses.filter(
+      (c) => c.week_day === targetWeekday && isCourseActiveInWeek(c, targetWeek),
+    );
 
     for (const course of dayCourses) {
       const startPeriod = periodMap.get(course.start_section);
@@ -225,7 +246,8 @@ export async function syncClassAlarmsToNative(
   }
 
   const alarms = computeClassAlarms(courses, currentWeek, periods, classReminderMinutes, classReminderDays);
-  const hash = JSON.stringify(alarms);
+  // Use stable fields for dedup (alarmId doesn't depend on timestamps)
+  const hash = alarms.map((a) => a.alarmId).sort().join("|");
   if (hash === lastAlarmHash) return;
 
   await NotifyPlugin.cancelClassAlarms().catch(() => {});

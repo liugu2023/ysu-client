@@ -17,6 +17,7 @@ import org.json.JSONArray
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * WorkManager Worker: 后台轮询成绩/考试变化。
@@ -37,8 +38,7 @@ class NotifyWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         private const val MAX_CONSECUTIVE_FAILURES = 3
         private const val KEY_CONSECUTIVE_FAILURES = "notify_consecutive_failures"
 
-        @Volatile
-        private var nextNotificationId = NOTIFICATION_ID_BASE
+        private val nextNotificationId = AtomicInteger(NOTIFICATION_ID_BASE)
     }
 
     override suspend fun doWork(): Result {
@@ -141,21 +141,24 @@ class NotifyWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             // 成功，重置失败计数
             resetFailures(ctx)
             Log.d(TAG, "NotifyWorker finished, hasChanges=$hasChanges")
+            return Result.success()
         } catch (e: UnknownHostException) {
             Log.w(TAG, "Network error (DNS)", e)
             handleFailure(ctx, isNetworkError = true)
+            return Result.retry()
         } catch (e: SocketTimeoutException) {
             Log.w(TAG, "Network error (timeout)", e)
             handleFailure(ctx, isNetworkError = true)
+            return Result.retry()
         } catch (e: IOException) {
             Log.w(TAG, "Network error (IO)", e)
             handleFailure(ctx, isNetworkError = true)
+            return Result.retry()
         } catch (e: Exception) {
             Log.e(TAG, "NotifyWorker error", e)
             handleFailure(ctx, isNetworkError = false)
+            return Result.success()
         }
-
-        return Result.success()
     }
 
     // ─── Failure tracking ─────────────────────────────────────────────────
@@ -236,7 +239,7 @@ class NotifyWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             .setAutoCancel(true)
             .build()
 
-        val id = synchronized(this) { nextNotificationId++ }
+        val id = nextNotificationId.getAndIncrement()
         nm.notify(id, notification)
     }
 
@@ -264,7 +267,7 @@ class NotifyWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             .setAutoCancel(true)
             .build()
 
-        val id = synchronized(this) { nextNotificationId++ }
+        val id = nextNotificationId.getAndIncrement()
         nm.notify(id, notification)
     }
 

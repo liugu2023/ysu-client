@@ -81,9 +81,9 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
       .then(() => {
         setSdkReady(true);
 
-        // Show analytics consent prompt on first run or after update
+        // Show analytics consent prompt on first run only (not on every update)
         const analyticsPromptVersion = useSettingsStore.getState().analyticsPromptVersion;
-        if (analyticsPromptVersion !== APP_VERSION) {
+        if (!analyticsPromptVersion) {
           setShowAnalyticsPrompt(true);
         } else {
           // Fire-and-forget: anonymous usage stats
