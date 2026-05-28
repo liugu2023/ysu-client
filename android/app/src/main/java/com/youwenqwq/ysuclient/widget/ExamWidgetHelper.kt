@@ -90,7 +90,15 @@ class ExamWidgetHelper(private val context: Context) {
 
             // Show course name directly (bold, primary color)
             views.setTextViewText(R.id.exam_countdown_prefix, examDisplayName)
-            views.setTextViewText(R.id.exam_countdown_days, daysRemaining.toString())
+            val daysText = if (daysRemaining == 0L) {
+                context.getString(R.string.widget_exam_today)
+            } else {
+                daysRemaining.toString()
+            }
+            views.setTextViewText(R.id.exam_countdown_days, daysText)
+            // Hide "天" label when showing "今天"
+            views.setViewVisibility(R.id.exam_countdown_days_label,
+                if (daysRemaining == 0L) android.view.View.GONE else android.view.View.VISIBLE)
 
             // Show time portion only (e.g. "18:10-19:45")
             val timeOnly = extractTimeOnly(nearestExam.examTime)
@@ -151,7 +159,14 @@ class ExamWidgetHelper(private val context: Context) {
             // Show course name directly (truncate for 2x2 widget)
             val shortName = if (examDisplayName.length > 9) examDisplayName.take(8) + "…" else examDisplayName
             views.setTextViewText(R.id.exam_countdown_prefix, shortName)
-            views.setTextViewText(R.id.exam_countdown_days, daysRemaining.toString())
+            val daysText2x2 = if (daysRemaining == 0L) {
+                context.getString(R.string.widget_exam_today)
+            } else {
+                daysRemaining.toString()
+            }
+            views.setTextViewText(R.id.exam_countdown_days, daysText2x2)
+            views.setViewVisibility(R.id.exam_countdown_days_label,
+                if (daysRemaining == 0L) android.view.View.GONE else android.view.View.VISIBLE)
 
             // Show time portion only
             val timeOnly = extractTimeOnly(nearestExam.examTime)
