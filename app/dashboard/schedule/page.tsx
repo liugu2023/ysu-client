@@ -70,7 +70,7 @@ export default function SchedulePage() {
     };
   }, [compactMode]);
 
-  const periodsHook = useCachedData(["periods", credential], {
+  const periodsHook = useCachedData<ClassPeriod[]>(["periods", credential], {
     fetch: () => getClassPeriods(),
   });
   const periods = useMemo(() => {
@@ -97,7 +97,9 @@ export default function SchedulePage() {
 
   // 用 ref 持有最新的 periods 数据，避免 periods 变化触发 effect 重新执行
   const periodsRef = useRef(periods);
-  periodsRef.current = periods;
+  useEffect(() => {
+    periodsRef.current = periods;
+  });
 
   useEffect(() => {
     if (!credential) return;
