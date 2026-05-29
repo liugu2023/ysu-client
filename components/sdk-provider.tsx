@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { initSDK } from "@/lib/sdk";
 import { checkAuthStatus } from "@/lib/api";
@@ -15,6 +15,9 @@ import { trackAppLaunch } from "@/lib/analytics";
 import { syncFeedbackReplies } from "@/lib/feedback-check";
 import { AnalyticsPrompt } from "@/components/analytics-prompt";
 import { APP_VERSION } from "@/lib/version";
+import { useAnnouncementStore } from "@/lib/announcement-store";
+import { checkAnnouncement } from "@/lib/announcement";
+import { AnnouncementDialog } from "@/components/announcement-dialog";
 
 export function SDKProvider({ children }: { children: React.ReactNode }) {
   const { t, locale } = useTranslation();
@@ -29,6 +32,30 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
   const didInit = useRef(false);
   const [sdkReady, setSdkReady] = useState(false);
   const [showAnalyticsPrompt, setShowAnalyticsPrompt] = useState(false);
+
+  const performUpdateCheck = useCallback(async () => {
+    if (!isCapacitor()) return;
+    const { checkForUpdate } = await import("@/lib/updater");
+    const info = await checkForUpdate(true, updateMirror);
+    const hasUpdate = info.available || info.apkUpdateAvailable;
+    setUpdateStatus(hasUpdate);
+    if (hasUpdate) {
+      const { setUpdateInfo, setShowDialog } = useUpdateStore.getState();
+      setUpdateInfo(info);
+      setShowDialog(true);
+    }
+  }, [updateMirror, setUpdateStatus]);
+
+  const checkAnnouncementsThenUpdates = useCallback(async () => {
+    const info = await checkAnnouncement();
+    if (info) {
+      const { setAnnouncementInfo, setShowDialog } = useAnnouncementStore.getState();
+      setAnnouncementInfo(info);
+      setShowDialog(true);
+      return;
+    }
+    await performUpdateCheck();
+  }, [performUpdateCheck]);
 
   // Inject safe area CSS variables on native.
   // The Capacitor SystemBars plugin may report zero values for WebView < 140
@@ -59,32 +86,17 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    // Fire-and-forget: check for updates independently (Capacitor only)
-    if (isCapacitor()) {
-      import("@/lib/updater").then(({ checkForUpdate }) => {
-        checkForUpdate(true, updateMirror)
-          .then((info) => {
-            const hasUpdate = info.available || info.apkUpdateAvailable;
-            setUpdateStatus(hasUpdate);
-            if (hasUpdate) {
-              const { setUpdateInfo, setShowDialog } = useUpdateStore.getState();
-              setUpdateInfo(info);
-              setShowDialog(true);
-            }
-          })
-          .catch(() => {});
-      });
-    }
-
     initSDK()
       .then(() => {
         setSdkReady(true);
 
-        // Show analytics consent prompt on first run only (not on every update)
+        // Show analytics consent prompt if user hasn't made a choice yet
         const analyticsPromptVersion = useSettingsStore.getState().analyticsPromptVersion;
         if (!analyticsPromptVersion) {
           setShowAnalyticsPrompt(true);
         } else {
+          // User already made a choice: check announcements then updates
+          checkAnnouncementsThenUpdates();
           // Fire-and-forget: anonymous usage stats
           trackAppLaunch().catch(() => {});
         }
@@ -137,7 +149,7 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
         // false alarms caused by transient network issues.
         setSdkReady(true);
       });
-  }, [hasHydrated, settingsHydrated, setUpdateStatus, t, updateMirror]);
+  }, [hasHydrated, settingsHydrated, setUpdateStatus, t, updateMirror, checkAnnouncementsThenUpdates]);
 
   if (!hasHydrated || !settingsHydrated || !sdkReady) {
     return (
@@ -157,10 +169,13 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
         onClose={() => {
           setShowAnalyticsPrompt(false);
           useSettingsStore.getState().setAnalyticsPromptVersion(APP_VERSION);
+          // Check announcements then updates after privacy prompt is closed
+          checkAnnouncementsThenUpdates();
           // Try to track launch if user agreed
           trackAppLaunch().catch(() => {});
         }}
       />
+      <AnnouncementDialog onDismissed={performUpdateCheck} />
     </>
   );
 }
