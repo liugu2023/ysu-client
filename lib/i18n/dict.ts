@@ -194,6 +194,14 @@ export const zh = {
     skip: "稍后提醒",
     noReleaseNotes: "暂无更新说明",
   },
+  announcement: {
+    levelInfo: "通知",
+    levelWarning: "警告",
+    levelCritical: "紧急",
+    gotIt: "知道了",
+    dismiss: "不再提醒",
+    noContent: "暂无公告内容",
+  },
   login: {
     title: "燕大终端",
     schoolLabel: "学校",
@@ -807,6 +815,14 @@ export const en = {
     installing: "Installing...",
     skip: "Remind me later",
     noReleaseNotes: "No release notes",
+  },
+  announcement: {
+    levelInfo: "Info",
+    levelWarning: "Warning",
+    levelCritical: "Critical",
+    gotIt: "Got it",
+    dismiss: "Don't remind again",
+    noContent: "No announcement content",
   },
   login: {
     title: "YSU Terminal",
