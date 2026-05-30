@@ -23,7 +23,7 @@ export class ProviderError extends Error {
   readonly cause?: unknown;
 
   constructor(code: ProviderErrorCode, message: string, cause?: unknown) {
-    super(message);
+    super(message, { cause });
     this.name = 'ProviderError';
     this.code = code;
     this.cause = cause;
