@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { mutate } from "swr";
 import { toast } from "sonner";
 import { getActiveProvider, initializeActiveProvider } from "@/providers/provider-service";
 import { useAuthStore } from "@/lib/auth-store";
@@ -29,7 +30,6 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
   const updateChannel = useSettingsStore((s) => s.updateChannel);
   const setUpdateStatus = useUpdateStore((s) => s.setUpdateStatus);
   const didInit = useRef(false);
-  const [sdkReady, setSdkReady] = useState(false);
   const [showAnalyticsPrompt, setShowAnalyticsPrompt] = useState(false);
 
   const performUpdateCheck = useCallback(async () => {
@@ -87,7 +87,7 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
 
     initializeActiveProvider()
       .then(() => {
-        setSdkReady(true);
+        mutate((key) => Array.isArray(key) && key[0] === "provider");
 
         // Show analytics consent prompt if user hasn't made a choice yet
         const analyticsPromptVersion = useSettingsStore.getState().analyticsPromptVersion;
@@ -144,11 +144,10 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
         }
         // Silently ignore non-auth errors during startup to avoid
         // false alarms caused by transient network issues.
-        setSdkReady(true);
       });
   }, [hasHydrated, settingsHydrated, setUpdateStatus, t, updateMirror, updateChannel, checkAnnouncementsThenUpdates]);
 
-  if (!hasHydrated || !settingsHydrated || !sdkReady) {
+  if (!hasHydrated || !settingsHydrated) {
     return (
       <div className="flex min-h-svh items-center justify-center">
         <div className="text-muted-foreground" suppressHydrationWarning>
