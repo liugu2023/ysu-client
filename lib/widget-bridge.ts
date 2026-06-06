@@ -1,5 +1,6 @@
 import { registerPlugin } from "@capacitor/core";
 import type { Course, CurrentWeek, ClassPeriod, Exam } from "./types";
+import type { Exam as ProviderExam } from "@/providers/types";
 
 export interface WidgetBridgePlugin {
   syncSchedule(options: {
@@ -115,18 +116,30 @@ export async function syncWidgetSettingsToWidget(
   }
 }
 
+type WidgetSyncExam = Exam | ProviderExam;
+
+function getExamField(
+  exam: WidgetSyncExam,
+  legacyKey: keyof Exam,
+  providerKey: keyof ProviderExam,
+): string | undefined {
+  return (
+    (exam as Exam)[legacyKey] ?? (exam as ProviderExam)[providerKey]
+  ) as string | undefined;
+}
+
 export async function syncExamsToWidget(
-  exams: Exam[],
+  exams: WidgetSyncExam[],
   syncReminderHours: number = 24,
 ): Promise<void> {
   try {
     const widgetExams: WidgetExam[] = exams.map((e) => ({
       name: e.name,
-      exam_name: e.exam_name,
-      exam_date: e.exam_date,
-      exam_time: e.exam_time,
-      exam_location: e.exam_location,
-      seat_number: e.seat_number,
+      exam_name: getExamField(e, "exam_name", "examName"),
+      exam_date: getExamField(e, "exam_date", "examDate"),
+      exam_time: getExamField(e, "exam_time", "examTime"),
+      exam_location: getExamField(e, "exam_location", "examLocation"),
+      seat_number: getExamField(e, "seat_number", "seatNumber"),
     }));
 
     await WidgetBridge.syncExams({

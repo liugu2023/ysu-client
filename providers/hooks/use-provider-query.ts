@@ -9,6 +9,7 @@ import type { AcademicCapabilities } from "../types";
 export interface ProviderQueryResult<T> {
   data: T | undefined;
   isLoading: boolean;
+  isValidating: boolean;
   isError: boolean;
   error: ProviderError | undefined;
   mutate: KeyedMutator<T>;
@@ -34,7 +35,7 @@ export function useProviderQuery<T>(
 
   assertCapability(provider, capability);
 
-  const { data, error, isLoading, mutate } = useSWR<T, ProviderError>(
+  const { data, error, isLoading, isValidating, mutate } = useSWR<T, ProviderError>(
     isReady ? providerQueryKey(provider.id, feature, params) : null,
     fetcher,
     {
@@ -48,6 +49,7 @@ export function useProviderQuery<T>(
   return {
     data,
     isLoading,
+    isValidating,
     isError: !!error,
     error: error ?? undefined,
     mutate,
