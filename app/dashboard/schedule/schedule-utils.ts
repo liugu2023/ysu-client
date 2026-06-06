@@ -1,31 +1,30 @@
-import type { Course as LegacyCourse, ClassPeriod as LegacyClassPeriod } from "@/lib/types";
-import type { Course as ProviderCourse, ClassPeriod as ProviderClassPeriod } from "@/providers/types";
+import type { Course, ClassPeriod } from "@/providers/types";
 
-export type ScheduleCourse = LegacyCourse | ProviderCourse;
-export type ScheduleClassPeriod = LegacyClassPeriod | ProviderClassPeriod;
+export type ScheduleCourse = Course;
+export type ScheduleClassPeriod = ClassPeriod;
 
 export function courseWeekDay(course: ScheduleCourse): number {
-  return (course as LegacyCourse).week_day ?? (course as ProviderCourse).weekDay;
+  return course.weekDay;
 }
 
 export function courseStartSection(course: ScheduleCourse): number {
-  return (course as LegacyCourse).start_section ?? (course as ProviderCourse).startSection;
+  return course.startSection;
 }
 
 export function courseEndSection(course: ScheduleCourse): number {
-  return (course as LegacyCourse).end_section ?? (course as ProviderCourse).endSection;
+  return course.endSection;
 }
 
 export function periodStartTime(period: ScheduleClassPeriod): string | undefined {
-  return (period as LegacyClassPeriod).start_time ?? (period as ProviderClassPeriod).startTime;
+  return period.startTime;
 }
 
 export function periodEndTime(period: ScheduleClassPeriod): string | undefined {
-  return (period as LegacyClassPeriod).end_time ?? (period as ProviderClassPeriod).endTime;
+  return period.endTime;
 }
 
 export function periodIsInUse(period: ScheduleClassPeriod): boolean {
-  return (period as LegacyClassPeriod).is_in_use ?? (period as ProviderClassPeriod).isInUse;
+  return period.isInUse;
 }
 
 export function parseTimeToMinutes(timeStr: string | undefined): number | null {

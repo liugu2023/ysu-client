@@ -14,11 +14,7 @@ import { getJar as getCasJar, isAuthenticated as checkCASAuth } from "@/lib/cas"
 import { getJar as getJwxtJar, resetJWXT } from "@/lib/jwxt";
 import { ensureMobileAuthorized } from "@/lib/jwmobile";
 import { loadCASTGC, loadRememberedCredentials } from "@/lib/secure-storage";
-import {
-  getStudentInfo,
-  getExperimentalSchedule,
-  getCurrentWeek,
-} from "@/lib/api";
+import { useProvider } from "@/providers/use-provider";
 import { useSettingsStore } from "@/lib/settings-store";
 import { startNativePolling, stopNativePolling } from "@/lib/notify";
 import { NotifyPlugin } from "@/lib/notify-plugin";
@@ -74,6 +70,7 @@ interface DiagnosticResult {
 
 export default function DebugPage() {
   const { t } = useTranslation();
+  const provider = useProvider();
   const credential = useAuthStore((s) => s.credential);
   const username = useAuthStore((s) => s.username);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -200,21 +197,21 @@ export default function DebugPage() {
         }
 
         try {
-          await getStudentInfo(credential);
+          await provider.getStudentInfo();
           result.apiTests.studentInfo = { ok: true };
         } catch (e) {
           result.apiTests.studentInfo = { ok: false, error: (e as Error).message };
         }
 
         try {
-          await getExperimentalSchedule(credential);
+          await provider.getSchedule({ courseCategory: "all", includeLabSchedule: true });
           result.apiTests.schedule = { ok: true };
         } catch (e) {
           result.apiTests.schedule = { ok: false, error: (e as Error).message };
         }
 
         try {
-          await getCurrentWeek(credential);
+          await provider.getCurrentWeek();
           result.apiTests.currentWeek = { ok: true };
         } catch (e) {
           result.apiTests.currentWeek = { ok: false, error: (e as Error).message };
