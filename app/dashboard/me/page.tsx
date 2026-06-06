@@ -23,16 +23,14 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useSettingsStore } from "@/lib/settings-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { useMobileHeaderRight } from "@/lib/mobile-header-store";
-import { getStudentInfo } from "@/lib/api";
-import { useCachedData, LONG_TTL_MS } from "@/lib/use-cached-data";
 import { resetSDK } from "@/lib/sdk";
+import { useStudentInfo } from "@/providers/hooks";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import { useTheme } from "next-themes";
 import { APP_VERSION, APP_BUILD } from "@/lib/version";
 
 export default function MePage() {
   const router = useRouter();
-  const credential = useAuthStore((s) => s.credential);
   const username = useAuthStore((s) => s.username);
   const { t } = useTranslation();
   const { theme, setTheme, systemTheme } = useTheme();
@@ -41,10 +39,7 @@ export default function MePage() {
 
   useEffect(() => setMounted(true), []);
 
-  const student = useCachedData(["student", credential], {
-    fetch: () => getStudentInfo(),
-    ttl: LONG_TTL_MS,
-  });
+  const student = useStudentInfo();
 
   const isSystem = theme === "system";
   const effectiveTheme = isSystem ? systemTheme : theme;
@@ -129,7 +124,7 @@ export default function MePage() {
             <AvatarFallback className="text-lg">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            {student.loading && !student.data ? (
+            {student.isLoading && !student.data ? (
               <>
                 <Skeleton className="h-5 w-24" />
                 <Skeleton className="h-4 w-32" />
@@ -137,9 +132,9 @@ export default function MePage() {
             ) : (
               <>
                 <span className="truncate text-base font-semibold">{displayName}</span>
-                {student.data?.student_id && (
+                {student.data?.studentId && (
                   <span className="truncate text-sm text-muted-foreground">
-                    {student.data.student_id}
+                    {student.data.studentId}
                   </span>
                 )}
                 {student.data?.department && (
