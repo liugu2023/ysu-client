@@ -1,41 +1,83 @@
-/**
- * Provider 层统一导出
- */
-
 export type {
   AcademicProvider,
   AcademicCapabilities,
+  ProviderLifecycle,
+  ProviderAuth,
+  ProviderAcademics,
+  ProviderEvaluation,
+  ProviderMobile,
   Credential,
+  LoginStep1Input,
+  LoginStep1Result,
+  MfaMethod,
+  MfaChallenge,
+  MfaRequestInput,
+  MfaSubmitInput,
+  WechatMfaContext,
+  WechatQrPollResult,
+  AuthStatus,
   GradeQueryOptions,
+  GPAQueryOptions,
+  GradeAnalyticsQueryOptions,
+  GradeRankingQueryOptions,
   ScheduleQueryOptions,
+  UnscheduledCourseQueryOptions,
+  TermCalendarQueryOptions,
+  CurrentWeekQueryOptions,
   ExamQueryOptions,
+  PageQueryOptions,
+  TermQueryOptions,
   StudentInfo,
   Grade,
+  GradeStatistics,
+  GradeDistribution,
+  GradeRanking,
   GPAStats,
   Course,
+  ClassPeriod,
+  TermCalendar,
+  CurrentWeek,
   Exam,
+  EvaluationType,
   EvaluationTask,
   EvaluationDetail,
+  EvaluationDetailQuery,
+  EvaluationScoreInput,
+  EvaluationSubmitInput,
   EvaluationAnswer,
   Question,
   QuestionOption,
   TrainingPlan,
   AcademicWarning,
   AcademicCompletion,
+  LessonActivity,
+  CurrentLesson,
+  CurrentLessonQuery,
+  SigninDetailQuery,
+  SigninActivityDetail,
+  StudentSigninStatus,
+  StudentSignInput,
+  StudentSignResult,
 } from "./types";
 
-export {
-  ProviderError,
-  ProviderErrorCode,
-  isProviderError,
-  wrapError,
-} from "./errors";
-
+export { BaseProvider } from "./base-provider";
+export { ProviderError, ProviderErrorCode, isProviderError, wrapError } from "./errors";
 export {
   ALL_CAPABILITIES,
   NO_CAPABILITIES,
   hasCapability,
+  assertCapability,
   getEnabledCapabilities,
 } from "./capabilities";
-
+export {
+  registerProvider,
+  hasProvider,
+  createProvider,
+} from "./provider-registry";
+export {
+  getActiveProvider,
+  setActiveProviderSchool,
+  initializeActiveProvider,
+  resetActiveProvider,
+} from "./provider-service";
 export { YSUProvider } from "./ysu";

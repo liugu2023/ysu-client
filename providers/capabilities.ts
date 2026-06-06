@@ -1,60 +1,77 @@
 /**
  * @fileoverview Capability declaration utilities for AcademicProvider.
- *
- * Provides constant objects representing full and empty capability sets,
- * along with helper functions for inspecting capability flags.
  */
 
-import { AcademicCapabilities } from "./types";
+import { ProviderError, ProviderErrorCode } from "./errors";
+import type { AcademicCapabilities, AcademicProvider } from "./types";
 
-/** All capabilities enabled. */
 export const ALL_CAPABILITIES: AcademicCapabilities = {
+  auth: true,
+  captcha: true,
+  mfa: true,
+  wechatMfa: true,
   grades: true,
+  gradeAnalytics: true,
   schedule: true,
+  labSchedule: true,
   exams: true,
   gpa: true,
   evaluation: true,
+  evaluationScorePreview: true,
   trainingPlan: true,
   studentInfo: true,
   currentWeek: true,
+  classPeriods: true,
+  termCalendar: true,
+  mobileSignin: true,
 };
 
-/** All capabilities disabled. */
 export const NO_CAPABILITIES: AcademicCapabilities = {
+  auth: false,
+  captcha: false,
+  mfa: false,
+  wechatMfa: false,
   grades: false,
+  gradeAnalytics: false,
   schedule: false,
+  labSchedule: false,
   exams: false,
   gpa: false,
   evaluation: false,
+  evaluationScorePreview: false,
   trainingPlan: false,
   studentInfo: false,
   currentWeek: false,
+  classPeriods: false,
+  termCalendar: false,
+  mobileSignin: false,
 };
 
-/**
- * Check whether a specific capability is enabled.
- *
- * @param capabilities - The capability flags object to inspect.
- * @param key - The capability key to check.
- * @returns `true` if the capability is enabled.
- */
 export function hasCapability(
   capabilities: AcademicCapabilities,
-  key: keyof AcademicCapabilities
+  key: keyof AcademicCapabilities,
 ): boolean {
   return capabilities[key] === true;
 }
 
-/**
- * Return a list of all enabled capability keys.
- *
- * @param capabilities - The capability flags object to inspect.
- * @returns Array of keys whose values are `true`.
- */
+export function assertCapability(
+  provider: Pick<AcademicProvider, "id" | "capabilities">,
+  key: keyof AcademicCapabilities,
+): void {
+  if (!hasCapability(provider.capabilities, key)) {
+    throw new ProviderError(
+      ProviderErrorCode.FEATURE_NOT_SUPPORTED,
+      `Provider "${provider.id}" does not support ${key}`,
+      undefined,
+      501,
+    );
+  }
+}
+
 export function getEnabledCapabilities(
-  capabilities: AcademicCapabilities
+  capabilities: AcademicCapabilities,
 ): string[] {
   return (Object.keys(capabilities) as (keyof AcademicCapabilities)[]).filter(
-    (key) => capabilities[key] === true
+    (key) => capabilities[key] === true,
   );
 }

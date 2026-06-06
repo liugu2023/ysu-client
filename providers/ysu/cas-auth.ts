@@ -1,7 +1,8 @@
 /**
  * CAS authentication wrapper for YSU Provider.
  *
- * Wraps lib/cas.ts functions and maps errors to ProviderError.
+ * Keeps CAS protocol details in lib/cas.ts while exposing a provider-native
+ * auth service shape and mapping CAS exceptions to ProviderError.
  */
 import {
   prepareLogin as _prepareLogin,
@@ -10,9 +11,14 @@ import {
   requestMFACode as _requestMFACode,
   submitMFACode as _submitMFACode,
   isAuthenticated as _isAuthenticated,
+  initiateWechatMFA as _initiateWechatMFA,
+  pollWechatQR as _pollWechatQR,
+  completeWechatMFA as _completeWechatMFA,
+  resetCAS,
   CASCredential,
   getJar as getCasJar,
   type MFAChallenge,
+  type WechatMFAContext,
   CASError,
   NeedCaptchaError,
   IPBlockedError,
@@ -21,90 +27,54 @@ import {
   MFAFailedError,
   CASProtocolError,
   NotAuthenticatedError,
-} from "../../lib/cas";
-import { checkRateLimit, recordLoginAttempt } from "../../lib/rate-limit";
-import { useAuthStore } from "../../lib/auth-store";
-import {
-  ProviderError,
-  ProviderErrorCode,
-  wrapError,
-} from "../errors";
+} from "@/lib/cas";
+import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
+import { useAuthStore } from "@/lib/auth-store";
+import { casUrls } from "@/lib/server-config";
+import { ProviderError, ProviderErrorCode, wrapError } from "../errors";
+import type { WechatQrPollResult } from "../types";
 
-/** Result of the first login step. */
 export interface LoginStep1Result {
-  /** Whether authentication is complete (no MFA needed). */
   authenticated: boolean;
-  /** Whether MFA is required to complete login. */
   needsMfa: boolean;
-  /** The username that was used for login. */
   username: string;
-  /** Serialized CAS credential, if available. */
   credential?: string;
 }
 
-export type { MFAChallenge };
+export type { MFAChallenge, WechatMFAContext };
 
 function mapCASError(e: unknown): ProviderError {
   if (e instanceof NeedCaptchaError) {
-    return new ProviderError(
-      ProviderErrorCode.AUTH_CAPTCHA_REQUIRED,
-      e.message,
-      e,
-    );
+    return new ProviderError(ProviderErrorCode.AUTH_CAPTCHA_REQUIRED, e.message, e, 403);
   }
   if (e instanceof IPBlockedError) {
-    return new ProviderError(
-      ProviderErrorCode.RATE_LIMITED,
-      e.message,
-      e,
-    );
+    return new ProviderError(ProviderErrorCode.RATE_LIMITED, e.message, e, 429);
   }
   if (e instanceof LoginFailedError) {
-    return new ProviderError(
-      ProviderErrorCode.AUTH_INVALID_CREDENTIAL,
-      e.message,
-      e,
-    );
+    return new ProviderError(ProviderErrorCode.AUTH_INVALID_CREDENTIAL, e.message, e, 401);
   }
   if (e instanceof MFARequiredError) {
-    return new ProviderError(
-      ProviderErrorCode.AUTH_MFA_REQUIRED,
-      e.message,
-      e,
-    );
+    return new ProviderError(ProviderErrorCode.AUTH_MFA_REQUIRED, e.message, e, 403);
   }
   if (e instanceof MFAFailedError) {
-    return new ProviderError(
-      ProviderErrorCode.AUTH_INVALID_CREDENTIAL,
-      e.message,
-      e,
-    );
+    return new ProviderError(ProviderErrorCode.AUTH_INVALID_CREDENTIAL, e.message, e, 401);
   }
   if (e instanceof NotAuthenticatedError) {
-    return new ProviderError(
-      ProviderErrorCode.AUTH_SESSION_EXPIRED,
-      e.message,
-      e,
-    );
+    return new ProviderError(ProviderErrorCode.AUTH_SESSION_EXPIRED, e.message, e, 401);
   }
   if (e instanceof CASProtocolError) {
-    return new ProviderError(
-      ProviderErrorCode.UNKNOWN,
-      e.message,
-      e,
-    );
+    return new ProviderError(ProviderErrorCode.BACKEND_PROTOCOL_ERROR, e.message, e, 500);
   }
   if (e instanceof CASError) {
-    return new ProviderError(
-      ProviderErrorCode.UNKNOWN,
-      e.message,
-      e,
-    );
+    return new ProviderError(ProviderErrorCode.BACKEND_BUSINESS_ERROR, e.message, e, 500);
   }
   return wrapError(e);
 }
 
-/** Prepare CAS login session (fetch login page, establish JSESSIONID). */
+export function getCaptchaUrl(): string {
+  return casUrls.captcha;
+}
+
 export async function prepareLogin(): Promise<void> {
   try {
     await _prepareLogin();
@@ -113,7 +83,10 @@ export async function prepareLogin(): Promise<void> {
   }
 }
 
-/** Check whether the given username needs a captcha. */
+export function resetLoginSession(): void {
+  resetCAS();
+}
+
 export async function checkCaptchaNeeded(username: string): Promise<boolean> {
   try {
     return await _checkCaptchaNeeded(username);
@@ -122,12 +95,6 @@ export async function checkCaptchaNeeded(username: string): Promise<boolean> {
   }
 }
 
-/**
- * Perform the first step of CAS login.
- *
- * @param credential - User credential with username, password, and optional captcha.
- * @param skipRateLimit - Whether to skip rate limit checking.
- */
 export async function loginStep1(
   credential: { username: string; password: string; captcha?: string },
   skipRateLimit = false,
@@ -138,17 +105,17 @@ export async function loginStep1(
       throw new ProviderError(
         ProviderErrorCode.RATE_LIMITED,
         `Rate limited: retry after ${Math.ceil(limit.retryAfterMs / 1000)}s`,
+        undefined,
+        429,
       );
     }
     recordLoginAttempt();
   }
 
   try {
-    const result = await _loginStep1(
-      credential.username,
-      credential.password,
-      { captcha: credential.captcha },
-    );
+    const result = await _loginStep1(credential.username, credential.password, {
+      captcha: credential.captcha,
+    });
     const credStr =
       result.authenticated || result.needsMfa
         ? (await CASCredential.fromJar(getCasJar())).toJSON()
@@ -164,7 +131,6 @@ export async function loginStep1(
   }
 }
 
-/** Request an MFA code for the given method. */
 export async function requestMFACode(
   username: string,
   method: "sms" | "cpdaily" | "weixin",
@@ -176,7 +142,6 @@ export async function requestMFACode(
   }
 }
 
-/** Submit an MFA code and return the resulting credential. */
 export async function submitMFACode(
   challenge: MFAChallenge,
   code: string,
@@ -189,7 +154,37 @@ export async function submitMFACode(
   }
 }
 
-/** Check whether the user is currently authenticated with CAS. */
+export async function initiateWechatMFA(): Promise<WechatMFAContext> {
+  try {
+    return await _initiateWechatMFA();
+  } catch (e) {
+    throw mapCASError(e);
+  }
+}
+
+export async function pollWechatQR(
+  uuid: string,
+  lastErrcode?: number,
+): Promise<WechatQrPollResult> {
+  try {
+    return await _pollWechatQR(uuid, lastErrcode);
+  } catch (e) {
+    throw mapCASError(e);
+  }
+}
+
+export async function completeWechatMFA(
+  code: string,
+  state: string,
+): Promise<string> {
+  try {
+    const credential = await _completeWechatMFA(code, state);
+    return credential.toJSON();
+  } catch (e) {
+    throw mapCASError(e);
+  }
+}
+
 export async function isAuthenticated(): Promise<boolean> {
   try {
     return await _isAuthenticated();
@@ -198,10 +193,6 @@ export async function isAuthenticated(): Promise<boolean> {
   }
 }
 
-/** Save the CAS credential to the auth store. */
-export function saveCredential(
-  credential: string,
-  username?: string,
-): void {
+export function saveCredential(credential: string, username?: string): void {
   useAuthStore.getState().setCredential(credential, username);
 }

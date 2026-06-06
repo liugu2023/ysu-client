@@ -1,428 +1,555 @@
 /**
  * @fileoverview AcademicProvider interface and unified domain models.
  *
- * This module defines the contract that all academic data providers must
- * implement, along with the canonical data models shared across the
- * application. The goal is to decouple UI components from any particular
- * university backend so that the same views can work with multiple providers.
+ * The provider layer is the application-facing boundary for all school-specific
+ * academic systems. UI code should consume these contracts (or provider hooks)
+ * instead of importing CAS/JWXT implementation modules directly.
  */
 
 /** Capability flags indicating which features a provider supports. */
 export interface AcademicCapabilities {
-  /** Supports querying grades / transcripts. */
+  auth: boolean;
+  captcha: boolean;
+  mfa: boolean;
+  wechatMfa: boolean;
   grades: boolean;
-  /** Supports querying class schedule / timetable. */
+  gradeAnalytics: boolean;
   schedule: boolean;
-  /** Supports querying exam arrangements. */
+  labSchedule: boolean;
   exams: boolean;
-  /** Supports querying GPA statistics. */
   gpa: boolean;
-  /** Supports course evaluation (teaching evaluation). */
   evaluation: boolean;
-  /** Supports querying training plan / curriculum. */
+  evaluationScorePreview: boolean;
   trainingPlan: boolean;
-  /** Supports querying student basic information. */
   studentInfo: boolean;
-  /** Supports querying the current academic week number. */
   currentWeek: boolean;
+  classPeriods: boolean;
+  termCalendar: boolean;
+  mobileSignin: boolean;
 }
 
 /** Login credential supplied by the user. */
 export interface Credential {
-  /** Student ID or username. */
   username: string;
-  /** Plain-text password (will be handled securely by the provider). */
   password: string;
-  /** Optional extra fields required by specific providers (e.g. captcha). */
   metadata?: Record<string, unknown>;
+}
+
+export interface LoginStep1Input {
+  username: string;
+  password: string;
+  captcha?: string;
+  skipRateLimit?: boolean;
+}
+
+export interface LoginStep1Result {
+  authenticated: boolean;
+  needsMfa: boolean;
+  username: string;
+  credential?: string;
+}
+
+export type MfaMethod = "sms" | "cpdaily" | "weixin";
+
+export interface MfaChallenge {
+  method: MfaMethod;
+  methodCode: string;
+  mobileHint: string;
+  username: string;
+}
+
+export interface MfaRequestInput {
+  username: string;
+  method: MfaMethod;
+}
+
+export interface MfaSubmitInput {
+  challenge: MfaChallenge;
+  code: string;
+}
+
+export interface WechatMfaContext {
+  uuid: string;
+  state: string;
+  qrImageUrl: string;
+  oauthUrl: string;
+}
+
+export interface WechatQrPollResult {
+  status: "waiting" | "scanned" | "confirmed";
+  code?: string;
+}
+
+export interface AuthStatus {
+  authenticated: boolean;
 }
 
 /** Options for querying grades. */
 export interface GradeQueryOptions {
-  /** Academic semester identifier, e.g. "2024-2025-1". */
   semester?: string;
-  /** Course type filter, e.g. "required", "elective". */
+  courseName?: string;
   courseType?: string;
+  pageSize?: number;
+  pageNumber?: number;
+}
+
+export interface GPAQueryOptions {
+  studentId?: string;
+}
+
+export interface GradeAnalyticsQueryOptions {
+  semester?: string;
+  classId?: string;
+  courseCode?: string;
+}
+
+export interface GradeRankingQueryOptions extends GradeAnalyticsQueryOptions {
+  studentId?: string;
 }
 
 /** Options for querying the class schedule. */
 export interface ScheduleQueryOptions {
-  /** Week number (1-based). */
-  week: number;
-  /** Academic semester identifier. */
+  week?: number;
   semester?: string;
+  courseCategory?: string;
+  includeLabSchedule?: boolean;
+}
+
+export interface UnscheduledCourseQueryOptions {
+  semester?: string;
+  courseCategory?: string;
+}
+
+export interface TermCalendarQueryOptions {
+  semester?: string;
+}
+
+export interface CurrentWeekQueryOptions {
+  semester?: string;
+  date?: string;
 }
 
 /** Options for querying exam arrangements. */
 export interface ExamQueryOptions {
-  /** Academic semester identifier. */
+  semester?: string;
+}
+
+export interface PageQueryOptions {
+  pageSize?: number;
+  pageNumber?: number;
+}
+
+export interface TermQueryOptions {
   semester?: string;
 }
 
 /** Basic student profile information. */
 export interface StudentInfo {
-  /** Full name. */
   name: string;
-  /** Pinyin of the name, if available. */
   namePinyin?: string;
-  /** Student ID number. */
   studentId: string;
-  /** Gender. */
   gender?: string;
-  /** Nation / ethnicity. */
   nation?: string;
-  /** Nationality. */
   nationality?: string;
-  /** Department / college name. */
   department?: string;
-  /** Major name. */
   major?: string;
-  /** Class name. */
   className?: string;
-  /** Grade level, e.g. "2022". */
   gradeLevel?: string;
-  /** Enrollment date. */
   enrollmentDate?: string;
-  /** Expected graduation date. */
   expectedGraduation?: string;
-  /** Education level, e.g. "本科", "硕士". */
   educationLevel?: string;
-  /** Campus name. */
   campus?: string;
-  /** Student status, e.g. "在读". */
   studentStatus?: string;
-  /** Discipline category. */
   discipline?: string;
-  /** Study duration in years. */
   studyDuration?: string;
-  /** Foreign language studied. */
   foreignLanguage?: string;
 }
 
 /** A single grade / course score record. */
 export interface Grade {
-  /** Course name. */
   courseName: string;
-  /** Course code. */
   courseCode?: string;
-  /** Class ID. */
   classId?: string;
-  /** Raw score string, e.g. "92" or "优秀". */
-  score: string;
-  /** Grade level, e.g. "A", "优秀". */
+  score?: string;
   gradeLevel?: string;
-  /** Grade point, e.g. "4.0". */
   gradePoint?: string;
-  /** Course credit. */
-  credit: string;
-  /** Class hours. */
+  credit?: string;
   hours?: string;
-  /** Academic semester. */
   semester?: string;
-  /** Course type, e.g. "必修", "选修". */
   courseType?: string;
-  /** Course category. */
   courseCategory?: string;
-  /** Exam type, e.g. "正常考试", "补考". */
   examType?: string;
-  /** Study mode, e.g. "初修", "重修". */
   studyMode?: string;
-  /** Whether this is a major course. */
   isMajor: boolean;
-  /** Whether this is a retake. */
-  isRetake?: boolean;
-  /** Grade level type code. */
+  isRetake?: string;
   gradeLevelType?: string;
-  /** Department offering the course. */
   department?: string;
-  /** Whether the score is a pass. */
   isPass: boolean;
-  /** Whether the grade is valid (not cancelled, etc.). */
   isValid: boolean;
-  /** Special reason for the grade, if any. */
   specialReason?: string;
-  /** Whether this is a degree-required course. */
   isDegreeCourse: boolean;
-  /** Project or experiment name, if applicable. */
   projectName?: string;
-  /** Provider-specific extra data. */
+  metadata?: Record<string, unknown>;
+}
+
+export interface GradeStatistics {
+  scope?: string;
+  semester?: string;
+  classId?: string;
+  courseCode?: string;
+  highestScore: number;
+  lowestScore: number;
+  averageScore: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GradeDistribution {
+  scope?: string;
+  semester?: string;
+  classId?: string;
+  courseCode?: string;
+  levelCode?: string;
+  levelName?: string;
+  count: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GradeRanking {
+  scope?: string;
+  semester?: string;
+  studentId?: string;
+  classId?: string;
+  courseCode?: string;
+  score: number;
+  rank: number;
+  total: number;
+  rankingType?: string;
   metadata?: Record<string, unknown>;
 }
 
 /** GPA and credit statistics. */
 export interface GPAStats {
-  /** Plan name, e.g. "主修". */
   planName?: string;
-  /** Study type, e.g. "本科". */
   studyType?: string;
-  /** Earned required credits. */
   requiredCreditEarned?: string;
-  /** Earned elective credits. */
   electiveCreditEarned?: string;
-  /** Earned degree credits. */
   degreeCreditEarned?: string;
-  /** Failed required credits. */
   requiredCreditFailed?: string;
-  /** Initial GPA (before any retakes). */
   gpaInitial?: string;
-  /** Highest GPA achieved. */
   gpaHighest?: string;
-  /** Highest required-course GPA. */
   requiredGpaHighest?: string;
-  /** Initial degree-course GPA. */
   degreeGpaInitial?: string;
-  /** Highest degree-course GPA. */
   degreeGpaHighest?: string;
-  /** Weighted average score. */
   weightedAvg?: string;
-  /** Arithmetic average score. */
   arithmeticAvg?: string;
-  /** Degree-course weighted average. */
   degreeWeightedAvg?: string;
 }
 
 /** A single scheduled course session (one time slot). */
 export interface Course {
-  /** Course name. */
   name: string;
-  /** Course code. */
   code?: string;
-  /** Teacher name(s). */
   teacher?: string;
-  /** Classroom / location. */
   classroom?: string;
-  /** Day of week (1 = Monday, 7 = Sunday). */
   weekDay: number;
-  /** Start section / period (1-based). */
   startSection: number;
-  /** End section / period (inclusive). */
   endSection: number;
-  /** Weeks during which this session occurs, e.g. "1-16" or "1,3,5...". */
   weeks?: string;
-  /** Course credit. */
   credit?: string;
-  /** Course type. */
   courseType?: string;
-  /** Class ID. */
   classId?: string;
-  /** Schedule ID from the backend. */
+  syxzdm?: string;
   scheduleId?: string;
-  /** Raw provider-specific data. */
+  classType?: string;
+  raw?: Record<string, unknown>;
+}
+
+export interface ClassPeriod {
+  name?: string;
+  section: number;
+  startTime?: string;
+  endTime?: string;
+  isInUse: boolean;
+  raw?: Record<string, unknown>;
+}
+
+export interface TermCalendar {
+  semester?: string;
+  startDate?: string;
+  totalWeeks: number;
+  teachingWeeks: number;
+  isInUse: boolean;
+  raw?: Record<string, unknown>;
+}
+
+export interface CurrentWeek {
+  week: number;
+  weekday: number;
+  semester?: string;
+  date?: string;
   raw?: Record<string, unknown>;
 }
 
 /** An exam arrangement entry. */
 export interface Exam {
-  /** Course or exam name. */
   name: string;
-  /** Specific exam name, e.g. "期末考试". */
   examName?: string;
-  /** Exam date string. */
   examDate?: string;
-  /** Exam time range string. */
   examTime?: string;
-  /** Exam location / room. */
   examLocation?: string;
-  /** Seat number. */
   seatNumber?: string;
+  raw?: Record<string, unknown>;
+}
+
+export interface EvaluationType {
+  name: string;
+  code?: string;
+  count: number;
 }
 
 /** A teaching-evaluation task header. */
 export interface EvaluationTask {
-  /** Task ID. */
   wid: string;
-  /** Evaluation form ID. */
   wjid?: string;
-  /** Task name. */
   name?: string;
-  /** Course name being evaluated. */
   courseName?: string;
-  /** Teacher name being evaluated. */
   teacherName?: string;
-  /** Teacher ID. */
   teacherId?: string;
-  /** Academic term. */
   term?: string;
-  /** Evaluation type code. */
+  termName?: string;
   evalType?: string;
-  /** Evaluation type display name. */
   evalTypeName?: string;
-  /** Category code. */
   category?: string;
-  /** Category display name. */
   categoryName?: string;
-  /** Start time of the evaluation window. */
   startTime?: string;
-  /** End time of the evaluation window. */
   endTime?: string;
-  /** Sequence / order number. */
   sequence: number;
-  /** Class name. */
   className?: string;
-  /** Group number. */
   groupNo?: string;
+  providerTaskId?: string;
 }
 
 /** A single option inside an evaluation question. */
 export interface QuestionOption {
-  /** Option ID. */
   wid: string;
-  /** Option text. */
   text?: string;
-  /** Absolute score value. */
   score: number;
-  /** Score ratio (e.g. 1.0 for full score). */
   scoreRatio: number;
-  /** Parent question ID. */
   questionId?: string;
 }
 
 /** A question inside an evaluation form. */
 export interface Question {
-  /** Question ID. */
   tmid: string;
-  /** Evaluation form ID. */
   wjid?: string;
-  /** Question text. */
   text?: string;
-  /** Question type, e.g. "single", "multiple", "text". */
   questionType?: string;
-  /** Maximum score for this question. */
   maxScore: number;
-  /** Display order. */
   order: number;
-  /** Available options (for choice questions). */
   options: QuestionOption[];
 }
 
 /** Detailed evaluation form definition. */
 export interface EvaluationDetail {
-  /** Evaluation form ID. */
   wjid?: string;
-  /** Form name. */
   name?: string;
-  /** Submission deadline. */
   deadline?: string;
-  /** Questions in the form. */
   questions: Question[];
-  /** Teachers being evaluated (provider-specific shape). */
   teachers?: Record<string, unknown>[];
 }
 
 /** A single answer to an evaluation question. */
 export interface EvaluationAnswer {
-  /** Question ID. */
   tmid: string;
-  /** Question type. */
   questionType?: string;
-  /** Selected option IDs (for choice questions). */
   optionIds?: string[];
-  /** Free-text answer (for text questions). */
   text?: string;
 }
 
+export interface EvaluationDetailQuery {
+  groupNo: string;
+  evalType: string;
+  sequence?: number;
+}
+
+export interface EvaluationScoreInput {
+  groupNo: string;
+  wjid: string;
+  evalType: string;
+  answers: EvaluationAnswer[];
+  teacherRelationId?: string;
+  courseName?: string;
+  teacherName?: string;
+  sequence?: number;
+}
+
+export type EvaluationSubmitInput = EvaluationScoreInput;
+
 /** A course entry in the training plan / curriculum. */
 export interface TrainingPlan {
-  /** Course name. */
   courseName: string;
-  /** Course code. */
   courseCode?: string;
-  /** Credit. */
   credit?: string;
-  /** Course type. */
   courseType?: string;
-  /** Whether the course is required. */
   required: boolean;
-  /** Term / semester in which the course is scheduled. */
   term?: string;
-  /** Course group / module name. */
   courseGroup?: string;
 }
 
 /** An academic warning / probation record. */
 export interface AcademicWarning {
-  /** Warning type, e.g. "学分不足". */
   warningType: string;
-  /** Warning level, e.g. "黄色", "红色". */
   warningLevel?: string;
-  /** Detailed description. */
   description?: string;
-  /** Related term. */
   term?: string;
 }
 
 /** Academic completion / graduation audit summary. */
 export interface AcademicCompletion {
-  /** Plan name. */
   planName?: string;
-  /** Total credits required. */
   totalRequired?: string;
-  /** Credits completed. */
   completed?: string;
-  /** Elective credits completed. */
   elective?: string;
-  /** Whether the student has passed the audit. */
   passed: boolean;
+}
+
+export interface LessonActivity {
+  activityId: string;
+  type: number | null;
+  status: number | null;
+  title: string | null;
+  icon: string | null;
+  signType: string | null;
+  signClazz: string | null;
+  isEnd: boolean;
+  isCreator: boolean;
+  createTime: string | null;
+  raw?: Record<string, unknown>;
+}
+
+export interface CurrentLesson {
+  lessonId: string | null;
+  activityList: LessonActivity[];
+  raw?: Record<string, unknown>;
+}
+
+export interface CurrentLessonQuery {
+  teachClassId: string;
+  teachClassType: string;
+  scheduleId: string;
+  week: number;
+  weekDay: number;
+  startNode: number;
+  endNode: number;
+}
+
+export interface SigninDetailQuery {
+  activityId: string;
+  title?: string;
+}
+
+export interface SigninActivityDetail {
+  activityId: string;
+  duration: number;
+  endTime: string;
+  leftSeconds: number;
+  signinType: number;
+  startTime: string;
+  raw?: Record<string, unknown>;
+}
+
+export interface StudentSigninStatus {
+  signStatus: number;
+  attendanceStatus: number;
+  signOrder: number;
+  signinType: number;
+  raw?: Record<string, unknown>;
+}
+
+export interface StudentSignInput {
+  activityId: string;
+  accuracy?: number;
+  latitude?: number;
+  longitude?: number;
+  code?: string;
+}
+
+export interface StudentSignResult {
+  signStatus: number;
+  attendanceStatus: number;
+  signOrder: number;
+  signinType: number;
+  raw?: Record<string, unknown>;
+}
+
+export interface ProviderLifecycle {
+  initialize(): Promise<void>;
+  warmup?(): Promise<void>;
+  reset(): Promise<void>;
+}
+
+export interface ProviderAuth {
+  prepareLogin(): Promise<void>;
+  resetLoginSession(): Promise<void> | void;
+  getCaptchaUrl(): string | null;
+  checkCaptchaNeeded(username: string): Promise<boolean>;
+  login(credential: Credential): Promise<void>;
+  loginStep1(input: LoginStep1Input): Promise<LoginStep1Result>;
+  requestMfaCode(input: MfaRequestInput): Promise<MfaChallenge>;
+  submitMfaCode(input: MfaSubmitInput): Promise<string>;
+  initiateWechatMfa(): Promise<WechatMfaContext>;
+  pollWechatMfaQr(uuid: string, lastErrcode?: number): Promise<WechatQrPollResult>;
+  completeWechatMfa(code: string, state: string): Promise<string>;
+  checkAuthStatus(): Promise<AuthStatus>;
+  logout(): Promise<void>;
+  isAuthenticated(): boolean;
+}
+
+export interface ProviderAcademics {
+  getStudentInfo(): Promise<StudentInfo>;
+  getGrades(options?: GradeQueryOptions): Promise<Grade[]>;
+  getGPAStats(options?: GPAQueryOptions): Promise<GPAStats>;
+  getGradeStatistics(options?: GradeAnalyticsQueryOptions): Promise<GradeStatistics>;
+  getGradeDistribution(options?: GradeAnalyticsQueryOptions): Promise<GradeDistribution[]>;
+  getGradeRanking(options?: GradeRankingQueryOptions): Promise<GradeRanking>;
+  getSchedule(options?: ScheduleQueryOptions): Promise<Course[]>;
+  getUnscheduledCourses(options?: UnscheduledCourseQueryOptions): Promise<Course[]>;
+  getClassPeriods(): Promise<ClassPeriod[]>;
+  getTermCalendar(options?: TermCalendarQueryOptions): Promise<TermCalendar>;
+  getCurrentWeek(options?: CurrentWeekQueryOptions): Promise<CurrentWeek>;
+  getCurrentWeekNumber(options?: CurrentWeekQueryOptions): Promise<number>;
+  getExams(options?: ExamQueryOptions): Promise<Exam[]>;
+  getTrainingPlan(options?: PageQueryOptions): Promise<TrainingPlan[]>;
+  getAcademicCompletion(): Promise<AcademicCompletion>;
+  getAcademicWarnings(): Promise<AcademicWarning[]>;
+}
+
+export interface ProviderEvaluation {
+  getEvaluationTypes(options?: TermQueryOptions): Promise<EvaluationType[]>;
+  getPendingEvaluations(evalType: string, options?: TermQueryOptions): Promise<EvaluationTask[]>;
+  getEvaluationTasks(options?: TermQueryOptions): Promise<EvaluationTask[]>;
+  getEvaluationDetail(query: EvaluationDetailQuery): Promise<EvaluationDetail>;
+  calculateEvaluationScore(input: EvaluationScoreInput): Promise<Record<string, unknown>>;
+  submitEvaluation(input: EvaluationSubmitInput): Promise<void>;
+}
+
+export interface ProviderMobile {
+  getCurrentLesson(input: CurrentLessonQuery): Promise<CurrentLesson>;
+  getSigninDetail(input: SigninDetailQuery): Promise<SigninActivityDetail>;
+  getStudentSigninStatus(input: SigninDetailQuery): Promise<StudentSigninStatus>;
+  doStudentSign(input: StudentSignInput): Promise<StudentSignResult>;
 }
 
 /**
  * Abstract contract for an academic data provider.
- *
- * Implementations hide the details of a specific university backend
- * (e.g. Yanshan University JWXT) and expose a uniform API for the UI layer.
  */
-export interface AcademicProvider {
-  /** Unique provider identifier, e.g. "ysu-jwxt". */
+export interface AcademicProvider
+  extends ProviderLifecycle,
+    ProviderAuth,
+    ProviderAcademics,
+    ProviderEvaluation {
   readonly id: string;
-
-  /** Human-readable provider name. */
   readonly name: string;
-
-  /** Feature flags indicating what this provider supports. */
   readonly capabilities: AcademicCapabilities;
-
-  /** Authenticate with the backend. */
-  login(credential: Credential): Promise<void>;
-
-  /** Clear local session / tokens. */
-  logout(): Promise<void>;
-
-  /** Whether the user is currently authenticated. */
-  isAuthenticated(): boolean;
-
-  /** Fetch basic student profile. */
-  getStudentInfo(): Promise<StudentInfo>;
-
-  /** Fetch grade records. */
-  getGrades(options?: GradeQueryOptions): Promise<Grade[]>;
-
-  /** Fetch GPA statistics. */
-  getGPAStats(): Promise<GPAStats>;
-
-  /** Fetch class schedule for a specific week. */
-  getSchedule(options: ScheduleQueryOptions): Promise<Course[]>;
-
-  /** Fetch the current academic week number. */
-  getCurrentWeek(): Promise<number>;
-
-  /** Fetch exam arrangements. */
-  getExams(options?: ExamQueryOptions): Promise<Exam[]>;
-
-  /** Fetch pending teaching-evaluation tasks. */
-  getEvaluationTasks(): Promise<EvaluationTask[]>;
-
-  /** Fetch the full evaluation form for a task. */
-  getEvaluationDetail(taskId: string): Promise<EvaluationDetail>;
-
-  /** Submit evaluation answers for a task. */
-  submitEvaluation(taskId: string, answers: EvaluationAnswer[]): Promise<void>;
-
-  /** Fetch the training plan / curriculum. */
-  getTrainingPlan(): Promise<TrainingPlan[]>;
-
-  /** Fetch academic completion / graduation audit summary. */
-  getAcademicCompletion(): Promise<AcademicCompletion>;
-
-  /** Fetch academic warnings, if any. */
-  getAcademicWarnings(): Promise<AcademicWarning[]>;
+  readonly mobile?: ProviderMobile;
 }

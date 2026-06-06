@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { initSDK } from "@/lib/sdk";
-import { checkAuthStatus } from "@/lib/api";
-import { warmupWEU } from "@/lib/jwxt";
+import { getActiveProvider, initializeActiveProvider } from "@/providers/provider-service";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSettingsStore } from "@/lib/settings-store";
 import { useUpdateStore } from "@/lib/update-store";
@@ -87,7 +85,7 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    initSDK()
+    initializeActiveProvider()
       .then(() => {
         setSdkReady(true);
 
@@ -115,19 +113,17 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
         // Background: verify auth + warm up WEU tokens after the UI is
         // already visible so the user sees cached data immediately.
         (async () => {
-          let status = await checkAuthStatus();
+          const provider = getActiveProvider();
+          let status = await provider.checkAuthStatus();
           if (!status.authenticated) {
             // Cookie restoration may not be immediately effective on
             // Capacitor; wait briefly and retry once before concluding
             // the session is actually expired.
             await new Promise((r) => setTimeout(r, 800));
-            status = await checkAuthStatus();
+            status = await provider.checkAuthStatus();
           }
           if (status.authenticated) {
-            warmupWEU().catch(() => {});
-            import("@/lib/jwmobile").then(({ ensureMobileAuthorized }) => {
-              ensureMobileAuthorized(true).catch(() => {});
-            });
+            provider.warmup?.().catch(() => {});
           }
           if (!status.authenticated) {
             toast.error(t("app.sessionExpired"));

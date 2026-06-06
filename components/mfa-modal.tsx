@@ -25,8 +25,7 @@ import {
 } from "@/components/ui/toggle-group";
 import { useMFAModalStore } from "@/lib/mfa-modal-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { requestMFACode } from "@/lib/api";
-import { initiateWechatMFA, pollWechatQR, completeWechatMFA } from "@/lib/cas";
+import { getActiveProvider } from "@/providers/provider-service";
 import { useAuthStore } from "@/lib/auth-store";
 import { isTablet } from "@/lib/platform";
 import { toast } from "sonner";
@@ -96,12 +95,9 @@ export function MFAModal() {
     setLoading(true);
     try {
       const method = mfaMethod as "sms" | "cpdaily";
-      const res = await requestMFACode(
-        { username, method },
-        undefined,
-      );
-      setLocalHint(res.mobile_hint);
-      setLocalMethodCode(res.method_code);
+      const res = await getActiveProvider().requestMfaCode({ username, method });
+      setLocalHint(res.mobileHint);
+      setLocalMethodCode(res.methodCode);
       setCountdown(COUNTDOWN_SECONDS);
     } catch (err) {
       toast.error((err as Error).message || t("login.errorMfaRequestFailed"));
@@ -136,7 +132,8 @@ export function MFAModal() {
     setWechatError('');
 
     try {
-      const ctx = await initiateWechatMFA();
+      const provider = getActiveProvider();
+      const ctx = await provider.initiateWechatMfa();
       wechatCtxRef.current = { uuid: ctx.uuid, state: ctx.state };
 
       // CAS's WeChat app only supports qrconnect (PC QR-scan login).
@@ -150,7 +147,7 @@ export function MFAModal() {
       while (pollingRef.current) {
         let result: { status: 'waiting' | 'scanned' | 'confirmed'; code?: string };
         try {
-          result = await pollWechatQR(ctx.uuid, lastErrcode);
+          result = await provider.pollWechatMfaQr(ctx.uuid, lastErrcode);
         } catch {
           // Poll request itself failed (network, timeout) — retry.
           continue;
@@ -161,9 +158,8 @@ export function MFAModal() {
           pollingRef.current = false;
 
           try {
-            const credential = await completeWechatMFA(result.code, ctx.state);
-            const json = credential.toJSON();
-            useAuthStore.getState().setCredential(json, username);
+            const credential = await provider.completeWechatMfa(result.code, ctx.state);
+            useAuthStore.getState().setCredential(credential, username);
             storeComplete();
           } catch (err) {
             setWechatStatus('error');
