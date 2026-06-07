@@ -1,10 +1,13 @@
-import { initSDK, resetSDK } from "@/lib/sdk";
-import { warmupWEU } from "@/lib/jwxt";
-import { ensureMobileAuthorized } from "@/lib/jwmobile";
+import {
+  initializeSession as initializeProviderSession,
+  resetSession as resetProviderSession,
+} from "../session";
+import { warmupWEU } from "../protocol/jwxt";
+import { ensureMobileAuthorized } from "../protocol/jwmobile";
 import { isFeatureAvailable } from "@/lib/server-config";
 
 export async function initializeSession(): Promise<void> {
-  await initSDK();
+  await initializeProviderSession();
 }
 
 export async function warmupSession(): Promise<void> {
@@ -15,5 +18,5 @@ export async function warmupSession(): Promise<void> {
 }
 
 export function resetSession(): void {
-  resetSDK();
+  resetProviderSession();
 }

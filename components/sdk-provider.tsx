@@ -78,7 +78,7 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
     didInit.current = true;
 
     // Signal the updater plugin that the current bundle loaded successfully.
-    // Must run before initSDK() to maximize the chance it fires within appReadyTimeout.
+    // Must run before provider session initialization to maximize the chance it fires within appReadyTimeout.
     if (isCapacitor()) {
       import("@capgo/capacitor-updater").then(({ CapacitorUpdater }) => {
         CapacitorUpdater.notifyAppReady().catch(() => {});

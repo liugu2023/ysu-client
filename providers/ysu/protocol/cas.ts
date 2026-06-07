@@ -3,7 +3,7 @@
  *
  * 纯函数 + 模块级状态(cookie jar)。
  */
-import { APP_VERSION } from "./version";
+import { APP_VERSION } from "@/lib/version";
 import {
   SimpleCookieJar,
   CookieEntry,
@@ -13,17 +13,17 @@ import {
   fetchWithJar,
   headerSingle,
   type HttpResponse,
-} from './cookie';
+} from "@/lib/cookie";
 import {
   saveCASTGC as saveCASTGCSecure,
   loadCASTGC,
-} from './secure-storage';
+} from "@/lib/secure-storage";
 import {
   serverConfig,
   casUrls,
   getCasCookieDomain,
   getSchoolConfig,
-} from './server-config';
+} from "@/lib/server-config";
 
 // ─── Constants ────────────────────────────────────────────────────────── //
 

@@ -7,17 +7,17 @@ import {
   checkCaptchaNeeded,
   prepareLogin,
   getJar,
-} from "./cas";
-import { resetJWXT } from "./jwxt";
-import { initSDK } from "./sdk";
-import { useAuthStore } from "./auth-store";
-import { useMFAModalStore } from "./mfa-modal-store";
-import { getText } from "./i18n/get-text";
-import { loadRememberedCredentials } from "./secure-storage";
+} from "./protocol/cas";
+import { resetJWXT } from "./protocol/jwxt";
+import { initializeSession } from "./session";
+import { useAuthStore } from "@/lib/auth-store";
+import { useMFAModalStore } from "@/lib/mfa-modal-store";
+import { getText } from "@/lib/i18n/get-text";
+import { loadRememberedCredentials } from "@/lib/secure-storage";
 
 let inflightAutoLogin: Promise<boolean> | null = null;
 
-export async function tryAutoLogin(): Promise<boolean> {
+export async function reloginYSU(): Promise<boolean> {
   if (inflightAutoLogin) return inflightAutoLogin;
 
   const remembered = await loadRememberedCredentials();
@@ -43,7 +43,7 @@ export async function tryAutoLogin(): Promise<boolean> {
         const credential = await CASCredential.fromJar(getJar());
         const json = credential.toJSON();
         useAuthStore.getState().setCredential(json, remembered.username);
-        await initSDK();
+        await initializeSession();
         return true;
       }
 
@@ -53,7 +53,7 @@ export async function tryAutoLogin(): Promise<boolean> {
         try {
           const result = await store.showMFA({ username: remembered.username });
           if (result.type === "wechat") {
-            await initSDK();
+            await initializeSession();
             return true;
           }
           const credential = await submitMFACode(
@@ -68,7 +68,7 @@ export async function tryAutoLogin(): Promise<boolean> {
           );
           const json = credential.toJSON();
           useAuthStore.getState().setCredential(json, remembered.username);
-          await initSDK();
+          await initializeSession();
           return true;
         } catch {
           return false;

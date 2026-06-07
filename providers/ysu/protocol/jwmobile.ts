@@ -11,13 +11,13 @@ import {
   cookieEntryFromJSON,
   fetchWithJar,
   headerSingle,
-} from './cookie';
-import { authorize } from './cas';
-import { useAuthStore } from './auth-store';
+} from "@/lib/cookie";
+import { authorize } from "./cas";
+import { useAuthStore } from "@/lib/auth-store";
 import {
   mobileUrls,
   getJwxtCookieDomain,
-} from './server-config';
+} from "@/lib/server-config";
 
 // ─── Constants ────────────────────────────────────────────────────────── //
 

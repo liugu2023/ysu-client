@@ -9,9 +9,9 @@
 import { useSettingsStore } from "./settings-store";
 import { isCapacitor } from "./platform";
 import { NotifyPlugin } from "./notify-plugin";
-import { getJar as getCasJar } from "./cas";
 import { loadCASTGC } from "./secure-storage";
 import { buildNativeServerConfig } from "./notify-config";
+import { casUrls } from "./server-config";
 import type { Course, CurrentWeek, ClassPeriod } from "@/providers/types";
 
 // ─── Config Sync ────────────────────────────────────────────────────────── //
@@ -50,22 +50,9 @@ export async function syncCastgcToNative(): Promise<void> {
     try {
       const { CapacitorCookies } = await import("@capacitor/core");
       const cookies = await CapacitorCookies.getCookies({
-        url: "https://cer.ysu.edu.cn/authserver",
+        url: casUrls.authLogin,
       });
       castgc = cookies?.CASTGC;
-    } catch {
-      // ignore
-    }
-  }
-
-  // 3. fallback：从 JS cookie jar 读取
-  if (!castgc) {
-    try {
-      const allCookies = await getCasJar().getAllCookies();
-      const entry = allCookies.find((c) => c.name === "CASTGC");
-      if (entry?.value) {
-        castgc = entry.value;
-      }
     } catch {
       // ignore
     }

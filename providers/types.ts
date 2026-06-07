@@ -540,6 +540,26 @@ export interface ProviderMobile {
   doStudentSign(input: StudentSignInput): Promise<StudentSignResult>;
 }
 
+export interface ProviderRelogin {
+  relogin?(): Promise<boolean>;
+}
+
+export interface ProviderDiagnosticCookie {
+  name: string;
+  domain: string;
+  path: string;
+  value?: string;
+}
+
+export interface ProviderDiagnostics {
+  getAuthCookies(): Promise<ProviderDiagnosticCookie[]>;
+  getAcademicCookies(): Promise<ProviderDiagnosticCookie[]>;
+  getAuthCookieUrl?(): string;
+  checkAuth(): Promise<boolean>;
+  resetAcademicSession(): void;
+  ensureMobileAuthorized?(): Promise<void>;
+}
+
 /**
  * Abstract contract for an academic data provider.
  */
@@ -547,9 +567,11 @@ export interface AcademicProvider
   extends ProviderLifecycle,
     ProviderAuth,
     ProviderAcademics,
-    ProviderEvaluation {
+    ProviderEvaluation,
+    ProviderRelogin {
   readonly id: string;
   readonly name: string;
   readonly capabilities: AcademicCapabilities;
   readonly mobile?: ProviderMobile;
+  readonly diagnostics?: ProviderDiagnostics;
 }

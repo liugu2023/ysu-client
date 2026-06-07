@@ -27,7 +27,7 @@ import {
   MFAFailedError,
   CASProtocolError,
   NotAuthenticatedError,
-} from "@/lib/cas";
+} from "./protocol/cas";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import { useAuthStore } from "@/lib/auth-store";
 import { casUrls } from "@/lib/server-config";

@@ -10,9 +10,6 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { isCapacitor } from "@/lib/platform";
 import { getSchoolConfig, getSchoolId, serverConfig } from "@/lib/server-config";
-import { getJar as getCasJar, isAuthenticated as checkCASAuth } from "@/lib/cas";
-import { getJar as getJwxtJar, resetJWXT } from "@/lib/jwxt";
-import { ensureMobileAuthorized } from "@/lib/jwmobile";
 import { loadCASTGC, loadRememberedCredentials } from "@/lib/secure-storage";
 import { useProvider } from "@/providers/use-provider";
 import { useSettingsStore } from "@/lib/settings-store";
@@ -125,10 +122,9 @@ export default function DebugPage() {
         }
       }
 
-      const casJar = getCasJar();
-      const casCookies = await casJar.getAllCookies();
-      const jwxtJar = getJwxtJar();
-      const jwxtCookies = await jwxtJar.getAllCookies();
+      const diagnostics = provider.diagnostics;
+      const casCookies = diagnostics ? await diagnostics.getAuthCookies() : [];
+      const jwxtCookies = diagnostics ? await diagnostics.getAcademicCookies() : [];
 
       const castgc = await loadCASTGC();
       const rememberMe = await loadRememberedCredentials();
@@ -191,7 +187,9 @@ export default function DebugPage() {
       // API tests (sequential to avoid overwhelming the server)
       if (credential) {
         try {
-          result.apiTests.casAuth = { ok: await checkCASAuth() };
+          result.apiTests.casAuth = diagnostics
+            ? { ok: await diagnostics.checkAuth() }
+            : { ok: null, error: "Provider diagnostics unavailable" };
         } catch (e) {
           result.apiTests.casAuth = { ok: false, error: (e as Error).message };
         }
@@ -219,8 +217,12 @@ export default function DebugPage() {
 
         // Mobile auth test: run the full mobile authorization flow
         try {
-          await ensureMobileAuthorized();
-          result.apiTests.mobileAuth = { ok: true };
+          if (diagnostics?.ensureMobileAuthorized) {
+            await diagnostics.ensureMobileAuthorized();
+            result.apiTests.mobileAuth = { ok: true };
+          } else {
+            result.apiTests.mobileAuth = { ok: null, error: "Provider mobile diagnostics unavailable" };
+          }
         } catch (e) {
           result.apiTests.mobileAuth = { ok: false, error: (e as Error).message };
         }
@@ -250,7 +252,7 @@ export default function DebugPage() {
   }
 
   function handleClearJWXTJar() {
-    resetJWXT();
+    provider.diagnostics?.resetAcademicSession();
     toast.success(t("debug.jwxtJarCleared"));
     runDiagnostics();
   }
@@ -298,20 +300,24 @@ export default function DebugPage() {
 
       // 诊断：从 CapacitorCookies 读取
       const { CapacitorCookies } = await import("@capacitor/core");
-      const cookies = await CapacitorCookies.getCookies({
-        url: "https://cer.ysu.edu.cn/authserver",
-      });
+      const authCookieUrl = provider.diagnostics?.getAuthCookieUrl?.();
+      const cookies = authCookieUrl
+        ? await CapacitorCookies.getCookies({ url: authCookieUrl })
+        : {};
       logNative(`CapacitorCookies: ${JSON.stringify(cookies)}`);
 
       // 诊断：从 JS cookie jar 读取
-      const casCookies = await getCasJar().getAllCookies();
+      const casCookies = provider.diagnostics
+        ? await provider.diagnostics.getAuthCookies()
+        : [];
       const jarCastgc = casCookies.find((c) => c.name === "CASTGC");
-      logNative(`JS cookie jar CASTGC: ${jarCastgc ? `存在(len=${jarCastgc.value.length})` : "无"}`);
+      logNative(`JS cookie jar CASTGC: ${jarCastgc?.value ? `存在(len=${jarCastgc.value.length})` : "无"}`);
 
       // 诊断：直接调用 setCastgc
       if (jarCastgc?.value) {
-        logNative(`直接调用 setCastgc, castgc len=${jarCastgc.value.length}`);
-        await NotifyPlugin.setCastgc({ castgc: jarCastgc.value });
+        const castgc = jarCastgc.value;
+        logNative(`直接调用 setCastgc, castgc len=${castgc.length}`);
+        await NotifyPlugin.setCastgc({ castgc });
         logNative("setCastgc 调用完成");
       } else {
         logNative("跳过 setCastgc: castgc 为空");
@@ -358,19 +364,6 @@ export default function DebugPage() {
       logNative("Worker 已触发，稍后查看通知栏");
     } catch (e) {
       logNative(`触发 Worker 失败: ${(e as Error).message}`);
-    }
-  }
-
-  async function handleNativeGetState() {
-    if (!isCapacitor()) {
-      logNative("非 Capacitor 平台，跳过");
-      return;
-    }
-    try {
-      const result = await NotifyPlugin.checkPermissions();
-      logNative(`权限状态: granted=${result.granted}`);
-    } catch (e) {
-      logNative(`获取状态失败: ${(e as Error).message}`);
     }
   }
 

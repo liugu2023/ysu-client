@@ -89,6 +89,8 @@ import {
   warmupSession,
 } from "./adapters/session-adapter";
 import { YSUMobileAdapter } from "./adapters/mobile-adapter";
+import { ysuDiagnostics } from "./diagnostics";
+import { reloginYSU } from "./relogin";
 
 function ysuCapabilities(): AcademicCapabilities {
   return {
@@ -228,6 +230,7 @@ export class YSUProvider extends BaseProvider {
   readonly mobile?: ProviderMobile = this.capabilities.mobileSignin
     ? new YSUMobileAdapter()
     : undefined;
+  readonly diagnostics = ysuDiagnostics;
 
   protected async onInitialize(): Promise<void> {
     await initializeSession();
@@ -356,6 +359,10 @@ export class YSUProvider extends BaseProvider {
 
   isAuthenticated(): boolean {
     return useAuthStore.getState().isAuthenticated;
+  }
+
+  async relogin(): Promise<boolean> {
+    return reloginYSU();
   }
 
   async getStudentInfo(): Promise<StudentInfo> {

@@ -10,29 +10,29 @@ import {
   restoreCASCookies,
   logoutCAS,
   getJar as getCasJar,
-} from "./cas";
+} from "./protocol/cas";
 import {
   JWXTSession,
   restoreSession as restoreJWXTSession,
   resetJWXT,
   getJar as getJwxtJar,
-} from "./jwxt";
+} from "./protocol/jwxt";
 import {
   MobileSession,
   restoreSession as restoreMobileSession,
   resetMobileAuth,
   getJar as getMobileJar,
-} from "./jwmobile";
-import { useAuthStore } from "./auth-store";
-import { initServerConfig } from "./server-config";
-import { clearAllCache, cleanStaleCacheVersions } from "./cache";
-import { useRefreshStore } from "./refresh-store";
-import { isCapacitor } from "./platform";
-import { stopNotify } from "./notify";
-import { removeCASTGC } from "./secure-storage";
+} from "./protocol/jwmobile";
+import { useAuthStore } from "@/lib/auth-store";
+import { initServerConfig } from "@/lib/server-config";
+import { clearAllCache, cleanStaleCacheVersions } from "@/lib/cache";
+import { useRefreshStore } from "@/lib/refresh-store";
+import { isCapacitor } from "@/lib/platform";
+import { stopNotify } from "@/lib/notify";
+import { removeCASTGC } from "@/lib/secure-storage";
 
 /** 从 auth-store 恢复 CAS 凭据、JWXT 会话和 mobile 会话到各自的 jar。 */
-export async function initSDK(): Promise<void> {
+export async function initializeSession(): Promise<void> {
   // 从 settings-store 初始化自定义服务器地址
   initServerConfig();
   // 清理因 credential 轮换产生的孤立缓存
@@ -124,7 +124,7 @@ async function cleanOtaArtifacts(): Promise<void> {
 
   // 清理 APK 下载缓存
   try {
-    const { clearApkCache } = await import("./updater");
+    const { clearApkCache } = await import("@/lib/updater");
     await clearApkCache();
   } catch {
     // 忽略
@@ -132,7 +132,7 @@ async function cleanOtaArtifacts(): Promise<void> {
 }
 
 /** 重置所有 SDK 状态(登出时调用)。 */
-export function resetSDK(): void {
+export function resetSession(): void {
   void (async () => {
     try {
       await logoutCAS();

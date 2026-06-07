@@ -32,3 +32,11 @@ export async function initializeActiveProvider(): Promise<AcademicProvider> {
 export async function resetActiveProvider(): Promise<void> {
   await getActiveProvider().reset();
 }
+
+export async function logoutActiveProvider(): Promise<void> {
+  await getActiveProvider().logout();
+}
+
+export async function reloginActiveProvider(): Promise<boolean> {
+  return (await getActiveProvider().relogin?.()) ?? false;
+}

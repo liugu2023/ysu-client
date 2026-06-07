@@ -19,11 +19,10 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
-import { useAuthStore } from "@/lib/auth-store";
 import { useSettingsStore, type LandingPage } from "@/lib/settings-store";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { resetSDK } from "@/lib/sdk";
+import { logoutActiveProvider, reloginActiveProvider } from "@/providers/provider-service";
 import { isCapacitor } from "@/lib/platform";
 
 import { syncWidgetSettingsToWidget } from "@/lib/widget-bridge";
@@ -56,7 +55,6 @@ import {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const clearCredential = useAuthStore((s) => s.clearCredential);
   const { t, locale, setLocale } = useTranslation();
   const { theme, setTheme } = useTheme();
   const hasUpdate = useUpdateStore((s) => s.hasUpdate);
@@ -112,10 +110,9 @@ export default function SettingsPage() {
     return () => { listener?.remove(); };
   }, []);
 
-  function handleLogout() {
+  async function handleLogout() {
     setLogoutDialogOpen(false);
-    clearCredential();
-    resetSDK();
+    await logoutActiveProvider();
     toast.success(t("app.logout"));
     router.replace("/login");
   }
@@ -138,8 +135,7 @@ export default function SettingsPage() {
     recordLoginAttempt();
 
     try {
-      const { tryAutoLogin } = await import("@/lib/auto-login");
-      const success = await tryAutoLogin();
+      const success = await reloginActiveProvider();
       if (success) {
         toast.success(t("login.loginSuccess"));
         return;
@@ -147,8 +143,7 @@ export default function SettingsPage() {
     } catch {
       // fall through
     }
-    clearCredential();
-    resetSDK();
+    await logoutActiveProvider();
     router.replace("/login");
   }
 

@@ -23,7 +23,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useSettingsStore } from "@/lib/settings-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { useMobileHeaderRight } from "@/lib/mobile-header-store";
-import { resetSDK } from "@/lib/sdk";
+import { logoutActiveProvider, reloginActiveProvider } from "@/providers/provider-service";
 import { useStudentInfo } from "@/providers/hooks";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
 import { useTheme } from "next-themes";
@@ -88,8 +88,7 @@ export default function MePage() {
     recordLoginAttempt();
 
     try {
-      const { tryAutoLogin } = await import("@/lib/auto-login");
-      const success = await tryAutoLogin();
+      const success = await reloginActiveProvider();
       if (success) {
         toast.success(t("login.loginSuccess"));
         return;
@@ -97,9 +96,7 @@ export default function MePage() {
     } catch {
       // fall through
     }
-    const clearCredential = useAuthStore.getState().clearCredential;
-    clearCredential();
-    resetSDK();
+    await logoutActiveProvider();
     router.replace("/login");
   }
 

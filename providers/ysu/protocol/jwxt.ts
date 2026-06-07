@@ -11,15 +11,15 @@ import {
   cookieEntryFromJSON,
   fetchWithJar,
   headerSingle,
-} from './cookie';
-import { authorize, getCredentialApplied } from './cas';
+} from "@/lib/cookie";
+import { authorize, getCredentialApplied } from "./cas";
 import {
   serverConfig,
   jwxtUrls,
   getJwxtCookieDomain,
   getSchoolConfig,
   onSchoolConfigChanged,
-} from './server-config';
+} from "@/lib/server-config";
 
 // Cached school config references for performance
 let _appIds: Readonly<Record<string, string>> = getSchoolConfig().jwxt.appIds;

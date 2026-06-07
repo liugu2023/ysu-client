@@ -4,13 +4,13 @@
  * Wraps lib/jwxt.ts functions with withJWXT() helper that persists
  * JWXT session after successful calls and maps errors to ProviderError.
  */
-import { persistJWXTSession } from "@/lib/sdk";
+import { persistJWXTSession } from "./session";
 import {
   NotLoggedInError,
   JWXTBusinessError,
   JWXTProtocolError,
   JWXTError,
-} from "@/lib/jwxt";
+} from "./protocol/jwxt";
 import { ProviderError, ProviderErrorCode, wrapError } from "../errors";
 import type {
   StudentInfo as JWXTStudentInfo,
@@ -31,7 +31,7 @@ import type {
   EvaluationTask as JWXTEvaluationTask,
   EvaluationDetail as JWXTEvaluationDetail,
   EvaluationAnswer as JWXTEvaluationAnswer,
-} from "@/lib/jwxt";
+} from "./protocol/jwxt";
 import {
   queryStudentInfo as _queryStudentInfo,
   queryGrades as _queryGrades,
@@ -54,7 +54,7 @@ import {
   getEvaluationDetail as _getEvaluationDetail,
   calculateEvaluationScore as _calculateEvaluationScore,
   submitEvaluation as _submitEvaluation,
-} from "@/lib/jwxt";
+} from "./protocol/jwxt";
 
 function mapJWXTError(e: unknown): ProviderError {
   if (e instanceof NotLoggedInError) {

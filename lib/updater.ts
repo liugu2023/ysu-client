@@ -278,7 +278,7 @@ export async function downloadAndApply(
       version: info.version,
     });
     await CapacitorUpdater.next({ id: bundle.id });
-    // 标记需要清理旧 OTA 版本，由下次 initSDK 执行
+    // 标记需要清理旧 OTA 版本，由下次 provider session 初始化执行
     localStorage.setItem(OTA_CLEANUP_FLAG, "1");
   } finally {
     await listener.remove();

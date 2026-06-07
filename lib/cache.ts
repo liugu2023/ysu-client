@@ -40,22 +40,6 @@ export function cacheKey(parts: string[]): string {
   return parts.map(hashPart).join("|");
 }
 
-export function cacheGet<T>(key: string, ttl = DEFAULT_TTL_MS): T | null {
-  try {
-    const raw = localStorage.getItem(`${CACHE_PREFIX}${key}`);
-    if (!raw) return null;
-    const entry: CacheEntry<T> = JSON.parse(raw);
-    if (entry.v !== CACHE_VERSION) {
-      localStorage.removeItem(`${CACHE_PREFIX}${key}`);
-      return null;
-    }
-    if (Date.now() - entry.ts > ttl) return null;
-    return entry.data;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * 读取缓存数据（即使已过期）。
  * 返回 `{ data, stale }` —— stale 为 true 表示数据已过期但可用作占位。
@@ -91,23 +75,6 @@ export function cacheSet<T>(key: string, data: T): void {
       });
     }
   }
-}
-
-// ─── 请求去重 ────────────────────────────────────────────────────────────
-
-const inflight = new Map<string, Promise<unknown>>();
-
-/** 确保同一 key 的并发请求只发一次。 */
-export async function dedupedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
-  const inflightKey = `if:${key}`;
-  const existing = inflight.get(inflightKey);
-  if (existing) return existing as Promise<T>;
-
-  const promise = fetcher().finally(() => {
-    inflight.delete(inflightKey);
-  });
-  inflight.set(inflightKey, promise);
-  return promise;
 }
 
 // ─── 清理 ────────────────────────────────────────────────────────────────

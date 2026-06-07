@@ -7,7 +7,7 @@ import {
   querySigninDetail,
   queryStudentSigninStatus,
   studentSign,
-} from "@/lib/jwmobile";
+} from "../protocol/jwmobile";
 import { ProviderError, ProviderErrorCode, wrapError } from "../../errors";
 import type {
   CurrentLesson,
