@@ -23,6 +23,7 @@ import { useSettingsStore, type LandingPage } from "@/lib/stores/settings";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { logoutActiveProvider, reloginActiveProvider } from "@/providers/provider-service";
+import { useProvider } from "@/providers/use-provider";
 import { isCapacitor } from "@/lib/native/platform";
 
 import { syncWidgetSettingsToWidget } from "@/lib/native/widget-bridge";
@@ -55,6 +56,8 @@ import {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const provider = useProvider();
+  const nativeNotification = provider.nativeNotification;
   const { t, locale, setLocale } = useTranslation();
   const { theme, setTheme } = useTheme();
   const hasUpdate = useUpdateStore((s) => s.hasUpdate);
@@ -335,7 +338,7 @@ export default function SettingsPage() {
                   onCheckedChange={(enabled) => {
                     setNotifyEnabled(enabled);
                     if (enabled) {
-                      startNotifyIfNeeded().then(() => triggerNotifyCheck()).catch(() => {});
+                      startNotifyIfNeeded(nativeNotification).then(() => triggerNotifyCheck()).catch(() => {});
                     } else {
                       stopNativePolling().catch(() => {});
                     }

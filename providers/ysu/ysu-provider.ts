@@ -90,6 +90,7 @@ import {
 } from "./adapters/session-adapter";
 import { YSUMobileAdapter } from "./adapters/mobile-adapter";
 import { ysuDiagnostics } from "./diagnostics";
+import { ysuNativeNotification } from "./native-notification";
 import { reloginYSU } from "./relogin";
 
 function ysuCapabilities(): AcademicCapabilities {
@@ -231,6 +232,7 @@ export class YSUProvider extends BaseProvider {
     ? new YSUMobileAdapter()
     : undefined;
   readonly diagnostics = ysuDiagnostics;
+  readonly nativeNotification = ysuNativeNotification;
 
   protected async onInitialize(): Promise<void> {
     await initializeSession();

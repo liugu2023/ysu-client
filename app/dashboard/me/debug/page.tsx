@@ -333,7 +333,7 @@ export default function DebugPage() {
       return;
     }
     try {
-      await startNativePolling();
+      await startNativePolling(provider.nativeNotification);
       logNative(`startNativePolling: 已启动 (interval=${notifyCheckInterval}min, grades=${notifyGrades}, exams=${notifyExams})`);
     } catch (e) {
       logNative(`startNativePolling 失败: ${(e as Error).message}`);

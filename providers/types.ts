@@ -560,6 +560,12 @@ export interface ProviderDiagnostics {
   ensureMobileAuthorized?(): Promise<void>;
 }
 
+export interface ProviderNativeNotification {
+  getServerConfig(): object;
+  getAuthToken(): Promise<string | null>;
+  getAuthCookieUrl?(): string;
+}
+
 /**
  * Abstract contract for an academic data provider.
  */
@@ -574,4 +580,5 @@ export interface AcademicProvider
   readonly capabilities: AcademicCapabilities;
   readonly mobile?: ProviderMobile;
   readonly diagnostics?: ProviderDiagnostics;
+  readonly nativeNotification?: ProviderNativeNotification;
 }

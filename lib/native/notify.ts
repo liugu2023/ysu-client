@@ -9,17 +9,16 @@
 import { useSettingsStore } from "../stores/settings";
 import { isCapacitor } from "./platform";
 import { NotifyPlugin } from "./notify-plugin";
-import { loadCASTGC } from "../storage/secure";
-import { buildNativeServerConfig } from "./notify-config";
-import { casUrls } from "../server-config";
-import type { Course, CurrentWeek, ClassPeriod } from "@/providers/types";
+import type { Course, CurrentWeek, ClassPeriod, ProviderNativeNotification } from "@/providers/types";
 
 // ─── Config Sync ────────────────────────────────────────────────────────── //
 
-export async function syncServerConfigToNative(): Promise<void> {
-  if (!isCapacitor()) return;
+export async function syncServerConfigToNative(
+  nativeNotification?: ProviderNativeNotification,
+): Promise<void> {
+  if (!isCapacitor() || !nativeNotification) return;
   try {
-    const config = buildNativeServerConfig();
+    const config = nativeNotification.getServerConfig();
     await NotifyPlugin.setServerConfig({ configJson: JSON.stringify(config) });
   } catch (e) {
     console.warn("Failed to sync server config to native", e);
@@ -32,29 +31,32 @@ export async function syncServerConfigToNative(): Promise<void> {
  * 优先从 secure storage 读取（saveCASTGC 时检查了非空），
  * fallback 到 CapacitorHttp cookie store 和 JS cookie jar。
  */
-export async function syncCastgcToNative(): Promise<void> {
-  if (!isCapacitor()) return;
+export async function syncCastgcToNative(
+  nativeNotification?: ProviderNativeNotification,
+): Promise<void> {
+  if (!isCapacitor() || !nativeNotification) return;
 
   let castgc: string | undefined;
 
-  // 1. 优先从 secure storage 读取（最可靠，保存时已校验非空）
+  // 1. 优先由当前 provider 提供认证 token。
   try {
-    const stored = await loadCASTGC();
-    if (stored) castgc = stored;
+    const token = await nativeNotification.getAuthToken();
+    if (token) castgc = token;
   } catch {
     // ignore
   }
 
-  // 2. fallback：从 CapacitorHttp cookie store 读取
+  // 2. fallback：从 CapacitorHttp cookie store 读取。
   if (!castgc) {
-    try {
-      const { CapacitorCookies } = await import("@capacitor/core");
-      const cookies = await CapacitorCookies.getCookies({
-        url: casUrls.authLogin,
-      });
-      castgc = cookies?.CASTGC;
-    } catch {
-      // ignore
+    const authCookieUrl = nativeNotification.getAuthCookieUrl?.();
+    if (authCookieUrl) {
+      try {
+        const { CapacitorCookies } = await import("@capacitor/core");
+        const cookies = await CapacitorCookies.getCookies({ url: authCookieUrl });
+        castgc = cookies?.CASTGC;
+      } catch {
+        // ignore
+      }
     }
   }
 
@@ -68,14 +70,16 @@ export async function syncCastgcToNative(): Promise<void> {
 /**
  * 确保通知轮询在调度中。冷启动时由 NotifyProvider 调用，不主动触发立即检查。
  */
-export async function startNotifyIfNeeded(): Promise<void> {
-  if (!isCapacitor()) return;
+export async function startNotifyIfNeeded(
+  nativeNotification?: ProviderNativeNotification,
+): Promise<void> {
+  if (!isCapacitor() || !nativeNotification) return;
 
   const { notifyEnabled } = useSettingsStore.getState();
   if (!notifyEnabled) return;
 
-  await syncServerConfigToNative();
-  await startNativePolling();
+  await syncServerConfigToNative(nativeNotification);
+  await startNativePolling(nativeNotification);
 }
 
 /**
@@ -89,8 +93,10 @@ export async function triggerNotifyCheck(): Promise<void> {
 /**
  * 启动原生后台轮询。在通知设置启用时调用。
  */
-export async function startNativePolling(): Promise<void> {
-  if (!isCapacitor()) return;
+export async function startNativePolling(
+  nativeNotification?: ProviderNativeNotification,
+): Promise<void> {
+  if (!isCapacitor() || !nativeNotification) return;
 
   const { notifyCheckInterval, notifyGrades, notifyExams, notifyNetworkError } = useSettingsStore.getState();
 
@@ -100,8 +106,8 @@ export async function startNativePolling(): Promise<void> {
     await NotifyPlugin.requestPermissions();
   }
 
-  // 同步 CASTGC
-  await syncCastgcToNative();
+  // 同步认证 token
+  await syncCastgcToNative(nativeNotification);
 
   // 启动轮询
   await NotifyPlugin.startPolling({

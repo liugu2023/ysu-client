@@ -1,4 +1,6 @@
-import { getSchoolConfig, serverConfig } from "../server-config";
+import { casUrls, getSchoolConfig, serverConfig } from "@/lib/server-config";
+import { loadCASTGC } from "@/lib/storage/secure";
+import type { ProviderNativeNotification } from "../types";
 
 export interface NativeFieldMappings {
   grade: Record<string, string[]>;
@@ -77,3 +79,9 @@ export function buildNativeServerConfig(): NativeServerConfig {
     configVersion: 1,
   };
 }
+
+export const ysuNativeNotification: ProviderNativeNotification = {
+  getServerConfig: buildNativeServerConfig,
+  getAuthToken: loadCASTGC,
+  getAuthCookieUrl: () => casUrls.authLogin,
+};
