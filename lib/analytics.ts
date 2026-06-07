@@ -1,4 +1,4 @@
-import { useSettingsStore } from "@/lib/settings-store";
+import { useSettingsStore } from "@/lib/stores/settings";
 import { APP_VERSION } from "@/lib/version";
 import { isCapacitor } from "@/lib/native/platform";
 

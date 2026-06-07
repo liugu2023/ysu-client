@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/lib/stores/auth";
 import { startNotifyIfNeeded, stopNotify, syncServerConfigToNative } from "@/lib/native/notify";
 import { isCapacitor } from "@/lib/native/platform";
 

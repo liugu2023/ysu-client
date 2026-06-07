@@ -29,7 +29,7 @@ import {
   NotAuthenticatedError,
 } from "./protocol/cas";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/lib/stores/auth";
 import { casUrls } from "@/lib/server-config";
 import { ProviderError, ProviderErrorCode, wrapError } from "../errors";
 import type { WechatQrPollResult } from "../types";

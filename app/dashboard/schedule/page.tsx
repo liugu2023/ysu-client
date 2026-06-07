@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/drawer";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMobileHeaderRight } from "@/lib/mobile-header-store";
+import { useMobileHeaderRight } from "@/lib/stores/mobile-header";
 import { useClassPeriods, useCurrentWeek, useSchedule } from "@/providers/hooks";
 import { ChevronDown, ChevronLeft, ChevronRight, Search, Grid3x2, Grid3x3 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ import { ScheduleTablet } from "./schedule-tablet";
 import { ScheduleMobile } from "./schedule-mobile";
 import { syncScheduleToWidget } from "@/lib/native/widget-bridge";
 import { syncClassAlarmsToNative } from "@/lib/native/notify";
-import { useSettingsStore } from "@/lib/settings-store";
+import { useSettingsStore } from "@/lib/stores/settings";
 
 export default function SchedulePage() {
   const { t } = useTranslation();

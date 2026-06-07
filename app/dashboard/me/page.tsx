@@ -19,10 +19,10 @@ import {
   Moon,
   User,
 } from "lucide-react";
-import { useAuthStore } from "@/lib/auth-store";
-import { useSettingsStore } from "@/lib/settings-store";
+import { useAuthStore } from "@/lib/stores/auth";
+import { useSettingsStore } from "@/lib/stores/settings";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { useMobileHeaderRight } from "@/lib/mobile-header-store";
+import { useMobileHeaderRight } from "@/lib/stores/mobile-header";
 import { logoutActiveProvider, reloginActiveProvider } from "@/providers/provider-service";
 import { useStudentInfo } from "@/providers/hooks";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";

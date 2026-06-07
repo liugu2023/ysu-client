@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { secureStorage } from "./storage/secure";
+import { secureStorage } from "../storage/secure";
 
 interface AuthState {
   credential: string | null;

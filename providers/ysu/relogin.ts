@@ -10,8 +10,8 @@ import {
 } from "./protocol/cas";
 import { resetJWXT } from "./protocol/jwxt";
 import { initializeSession } from "./session";
-import { useAuthStore } from "@/lib/auth-store";
-import { useMFAModalStore } from "@/lib/mfa-modal-store";
+import { useAuthStore } from "@/lib/stores/auth";
+import { useMFAModalStore } from "@/lib/stores/mfa-modal";
 import { getText } from "@/lib/i18n/get-text";
 import { loadRememberedCredentials } from "@/lib/storage/secure";
 

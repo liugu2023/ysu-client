@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { useAuthStore } from "@/lib/auth-store";
-import { useSettingsStore } from "@/lib/settings-store";
+import { useAuthStore } from "@/lib/stores/auth";
+import { useSettingsStore } from "@/lib/stores/settings";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   Sidebar,

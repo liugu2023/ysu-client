@@ -20,7 +20,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { useSettingsStore } from "@/lib/settings-store";
+import { useSettingsStore } from "@/lib/stores/settings";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { syncExamsToWidget } from "@/lib/native/widget-bridge";
 import { useExams } from "@/providers/hooks";

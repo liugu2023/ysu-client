@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { UpdateInfo } from "./updater";
+import type { UpdateInfo } from "../updater";
 
 interface UpdateState {
   hasUpdate: boolean;

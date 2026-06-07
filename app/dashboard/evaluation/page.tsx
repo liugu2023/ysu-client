@@ -37,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { useMobileHeaderRight } from "@/lib/mobile-header-store";
+import { useMobileHeaderRight } from "@/lib/stores/mobile-header";
 import { cn } from "@/lib/utils";
 import { useEvaluationTypes, usePendingEvaluations } from "@/providers/hooks";
 import { useProvider } from "@/providers/use-provider";

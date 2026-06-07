@@ -13,7 +13,7 @@ import {
   headerSingle,
 } from "@/lib/cookie";
 import { authorize } from "./cas";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/lib/stores/auth";
 import {
   mobileUrls,
   getJwxtCookieDomain,

@@ -19,8 +19,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAuthStore } from "@/lib/auth-store";
-import { useSettingsStore } from "@/lib/settings-store";
+import { useAuthStore } from "@/lib/stores/auth";
+import { useSettingsStore } from "@/lib/stores/settings";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { getAvailableSchools, setSchoolConfig, getSchoolId } from "@/lib/server-config";
 import {
@@ -36,7 +36,7 @@ import {
   clearRememberedCredentials,
 } from "@/lib/storage/secure";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { useMFAModalStore } from "@/lib/mfa-modal-store";
+import { useMFAModalStore } from "@/lib/stores/mfa-modal";
 import { getActiveProvider, setActiveProviderSchool } from "@/providers/provider-service";
 
 export default function LoginPage() {

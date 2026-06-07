@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { UpdateChannel } from "./updater";
+import type { UpdateChannel } from "../updater";
 
 export type CardStyle = "solid" | "translucent" | "glass";
 export type BackgroundStyle = "overlay" | "blur-overlay";

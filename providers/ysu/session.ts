@@ -23,10 +23,10 @@ import {
   resetMobileAuth,
   getJar as getMobileJar,
 } from "./protocol/jwmobile";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/lib/stores/auth";
 import { initServerConfig } from "@/lib/server-config";
 import { clearAllCache, cleanStaleCacheVersions } from "@/lib/storage/cache";
-import { useRefreshStore } from "@/lib/refresh-store";
+import { useRefreshStore } from "@/lib/stores/refresh";
 import { isCapacitor } from "@/lib/native/platform";
 import { stopNotify } from "@/lib/native/notify";
 import { removeCASTGC } from "@/lib/storage/secure";

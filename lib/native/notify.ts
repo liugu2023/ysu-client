@@ -6,7 +6,7 @@
  *
  * 上课提醒由 AlarmManager 在指定时间触发 ClassAlarmReceiver。
  */
-import { useSettingsStore } from "../settings-store";
+import { useSettingsStore } from "../stores/settings";
 import { isCapacitor } from "./platform";
 import { NotifyPlugin } from "./notify-plugin";
 import { loadCASTGC } from "../storage/secure";

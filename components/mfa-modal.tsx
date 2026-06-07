@@ -23,10 +23,10 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
-import { useMFAModalStore } from "@/lib/mfa-modal-store";
+import { useMFAModalStore } from "@/lib/stores/mfa-modal";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { getActiveProvider } from "@/providers/provider-service";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/lib/stores/auth";
 import { isTablet } from "@/lib/native/platform";
 import { toast } from "sonner";
 

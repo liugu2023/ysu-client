@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useSettingsStore } from "@/lib/settings-store";
+import { useSettingsStore } from "@/lib/stores/settings";
 import type { AcademicProvider } from "./types";
 import { getActiveProvider, setActiveProviderSchool } from "./provider-service";
 

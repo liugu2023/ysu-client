@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { type KeyedMutator, type SWRConfiguration } from "swr";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/lib/stores/auth";
 import { cacheGetStale, cacheKey, cacheSet, DEFAULT_TTL_MS, LONG_TTL_MS } from "@/lib/storage/cache";
-import { useRefreshStore } from "@/lib/refresh-store";
+import { useRefreshStore } from "@/lib/stores/refresh";
 import { assertCapability } from "../capabilities";
 import { ProviderError } from "../errors";
 import { useProvider, useProviderReady } from "../use-provider";

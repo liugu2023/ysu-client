@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/lib/stores/auth";
 import { isFeatureAvailable } from "@/lib/server-config";
 import { BaseProvider } from "../base-provider";
 import { ProviderError, ProviderErrorCode } from "../errors";

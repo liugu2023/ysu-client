@@ -19,7 +19,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
-import { useSettingsStore, type LandingPage } from "@/lib/settings-store";
+import { useSettingsStore, type LandingPage } from "@/lib/stores/settings";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { logoutActiveProvider, reloginActiveProvider } from "@/providers/provider-service";
@@ -27,7 +27,7 @@ import { isCapacitor } from "@/lib/native/platform";
 
 import { syncWidgetSettingsToWidget } from "@/lib/native/widget-bridge";
 import { checkRateLimit, recordLoginAttempt } from "@/lib/rate-limit";
-import { useUpdateStore } from "@/lib/update-store";
+import { useUpdateStore } from "@/lib/stores/update";
 import { useTheme } from "next-themes";
 import { startNotifyIfNeeded, stopNativePolling, triggerNotifyCheck } from "@/lib/native/notify";
 import { NotifyPlugin } from "@/lib/native/notify-plugin";

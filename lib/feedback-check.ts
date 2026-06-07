@@ -1,4 +1,4 @@
-import { useSettingsStore } from "@/lib/settings-store";
+import { useSettingsStore } from "@/lib/stores/settings";
 import { checkFeedbackReply } from "@/lib/feedback";
 import { getText } from "@/lib/i18n/get-text";
 import { toast } from "sonner";

@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { useAnnouncementStore } from "@/lib/announcement-store";
+import { useAnnouncementStore } from "@/lib/stores/announcement";
 import { dismissAnnouncement, type AnnouncementLevel } from "@/lib/announcement";
 
 interface AnnouncementDialogProps {
