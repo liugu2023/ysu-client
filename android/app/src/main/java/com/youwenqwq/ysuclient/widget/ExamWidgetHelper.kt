@@ -97,7 +97,8 @@ class ExamWidgetHelper(private val context: Context) {
             views.setViewVisibility(R.id.exam_countdown_days_label,
                 if (daysRemaining == 0L) android.view.View.GONE else android.view.View.VISIBLE)
 
-            views.setTextViewText(R.id.exam_countdown_date, formatExamTime(nearestExam))
+            views.setTextViewText(R.id.exam_countdown_date, formatExamTimeOnly(nearestExam))
+            bindExamDayDetail(views, nearestExam, daysRemaining)
         }
 
         // Click to open exams page
@@ -161,7 +162,8 @@ class ExamWidgetHelper(private val context: Context) {
             views.setViewVisibility(R.id.exam_countdown_days_label,
                 if (daysRemaining == 0L) android.view.View.GONE else android.view.View.VISIBLE)
 
-            views.setTextViewText(R.id.exam_countdown_date, formatExamTime(nearestExam))
+            views.setTextViewText(R.id.exam_countdown_date, formatExamTimeOnly(nearestExam))
+            bindExamDayDetail(views, nearestExam, daysRemaining)
         }
 
         // Click to open exams page
@@ -246,15 +248,38 @@ class ExamWidgetHelper(private val context: Context) {
         }
     }
 
-    private fun formatExamTime(exam: WidgetExam): String {
-        if (!exam.timeText.isNullOrEmpty()) return exam.timeText
+    private fun bindExamDayDetail(views: RemoteViews, exam: WidgetExam, daysRemaining: Long) {
+        if (daysRemaining != 0L) {
+            views.setViewVisibility(R.id.exam_countdown_detail, android.view.View.GONE)
+            views.setTextViewText(R.id.exam_countdown_detail, "")
+            return
+        }
+
+        val detail = buildExamDetail(exam)
+        if (detail.isEmpty()) {
+            views.setViewVisibility(R.id.exam_countdown_detail, android.view.View.GONE)
+            views.setTextViewText(R.id.exam_countdown_detail, "")
+        } else {
+            views.setTextViewText(R.id.exam_countdown_detail, detail)
+            views.setViewVisibility(R.id.exam_countdown_detail, android.view.View.VISIBLE)
+        }
+    }
+
+    private fun buildExamDetail(exam: WidgetExam): String {
+        return buildList {
+            if (!exam.examLocation.isNullOrEmpty()) add(exam.examLocation)
+            if (!exam.seatNumber.isNullOrEmpty()) add("#${exam.seatNumber}")
+        }.joinToString(" · ")
+    }
+
+    private fun formatExamTimeOnly(exam: WidgetExam): String {
         val start = extractTime(exam.startAt)
         val end = extractTime(exam.endAt)
         return when {
             start != null && end != null -> "$start-$end"
             start != null -> start
             end != null -> end
-            else -> ""
+            else -> exam.timeText ?: ""
         }
     }
 
