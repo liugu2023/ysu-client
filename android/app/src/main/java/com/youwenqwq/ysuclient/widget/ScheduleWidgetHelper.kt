@@ -44,13 +44,14 @@ class ScheduleWidgetHelper(private val context: Context) {
         val syncInfo = loadSyncInfo()
         val todayCourses = filterTodayCourses(courses)
         val hasCoursesToday = todayCourses.isNotEmpty()
+        val remainingTodayCourses = getRemainingCourses(todayCourses)
 
         val showNextDay = loadShowNextDaySchedule()
         var remainingCourses: List<WidgetCourse>
         var targetDay: Calendar? = null
 
-        if (hasCoursesToday) {
-            remainingCourses = getRemainingCourses(todayCourses)
+        if (remainingTodayCourses.isNotEmpty()) {
+            remainingCourses = remainingTodayCourses
         } else if (showNextDay) {
             val nextDay = findNextDayWithCourses(courses)
             if (nextDay != null) {
