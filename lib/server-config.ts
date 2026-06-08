@@ -6,48 +6,20 @@
  */
 
 import { getLocalStorageItemWithFallback, STORAGE_KEYS } from './storage/keys';
-import ysuConfig from './school-configs/ysu.json';
-import nbuConfig from './school-configs/nbu.json';
+import {
+  DEFAULT_SCHOOL_ID,
+  getSchoolConfigById,
+  getVisibleSchoolConfigs,
+} from './school-configs';
+import type { SchoolConfig } from './school-configs/types';
 
-// ─── Types ────────────────────────────────────────────────────────────── //
-
-export interface SchoolConfig {
-  readonly id: string;
-  readonly name: string;
-  readonly nameEn: string;
-  readonly cas: {
-    readonly cerBaseUrl: string;
-    readonly aesChars: string;
-    readonly mfaMethodToCode: Readonly<Record<string, string>>;
-    readonly mfaMethodToAuthCodeType: Readonly<Record<string, string>>;
-  };
-  readonly jwxt: {
-    readonly jwxtBaseUrl: string;
-    readonly portalPath: string;
-    readonly appShowPath: string;
-    readonly appIds: Readonly<Record<string, string>>;
-    readonly apiPaths: Readonly<Record<string, string>>;
-    /** Workaround: some backends return 404 for pjapp; retry with this route. */
-    readonly pjappGoodRoute?: string;
-  };
-  readonly features: {
-    readonly hasMobile: boolean;
-    readonly hasLabSchedule: boolean;
-    readonly hasMfa: boolean;
-  };
-  /** false = 不在登录页显示，适配未完成 */
-  readonly visible: boolean;
+const defaultSchoolConfig = getSchoolConfigById(DEFAULT_SCHOOL_ID);
+if (!defaultSchoolConfig) {
+  throw new Error(`Missing default school config: ${DEFAULT_SCHOOL_ID}`);
 }
 
-// ─── Available school configs ──────────────────────────────────────────── //
-
-const schoolConfigs: Readonly<Record<string, SchoolConfig>> = {
-  ysu: ysuConfig as SchoolConfig,
-  nbu: nbuConfig as SchoolConfig,
-};
-
-let currentSchoolId = 'ysu';
-let currentSchoolConfig: SchoolConfig = ysuConfig as SchoolConfig;
+let currentSchoolId = DEFAULT_SCHOOL_ID;
+let currentSchoolConfig: SchoolConfig = defaultSchoolConfig;
 
 // ─── Mutable config ────────────────────────────────────────────────────── //
 
@@ -108,7 +80,7 @@ export function isFeatureAvailable(feature: keyof SchoolConfig['features']): boo
 }
 
 export function getAvailableSchools(): Array<{ id: string; name: string; nameEn: string }> {
-  return Object.values(schoolConfigs).filter((c) => c.visible).map((c) => ({
+  return getVisibleSchoolConfigs().map((c) => ({
     id: c.id,
     name: c.name,
     nameEn: c.nameEn,
@@ -116,7 +88,7 @@ export function getAvailableSchools(): Array<{ id: string; name: string; nameEn:
 }
 
 export function setSchoolConfig(schoolId: string): boolean {
-  const config = schoolConfigs[schoolId];
+  const config = getSchoolConfigById(schoolId);
   if (!config) return false;
   currentSchoolId = schoolId;
   currentSchoolConfig = config;

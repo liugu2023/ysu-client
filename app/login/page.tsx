@@ -22,7 +22,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useSettingsStore } from "@/lib/stores/settings";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { getAvailableSchools, setSchoolConfig, getSchoolId } from "@/lib/server-config";
+import { getSchoolId, setSchoolConfig } from "@/lib/server-config";
+import { getSelectableSchools } from "@/providers/supported-schools";
 import {
   Select,
   SelectContent,
@@ -45,7 +46,7 @@ export default function LoginPage() {
   const setSchoolId = useSettingsStore((s) => s.setSchoolId);
   const { t } = useTranslation();
 
-  const schools = getAvailableSchools();
+  const schools = getSelectableSchools();
   const [selectedSchool, setSelectedSchool] = useState(getSchoolId());
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

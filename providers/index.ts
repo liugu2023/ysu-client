@@ -72,8 +72,10 @@ export {
 export {
   registerProvider,
   hasProvider,
+  getRegisteredProviderIds,
   createProvider,
 } from "./provider-registry";
+export { getSelectableSchools } from "./supported-schools";
 export {
   getActiveProvider,
   setActiveProviderSchool,

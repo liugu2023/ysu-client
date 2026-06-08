@@ -16,6 +16,10 @@ export function hasProvider(schoolId: string): boolean {
   return schoolId in registry;
 }
 
+export function getRegisteredProviderIds(): string[] {
+  return Object.keys(registry);
+}
+
 export function createProvider(schoolId: string): AcademicProvider {
   const factory = registry[schoolId];
   if (!factory) {
