@@ -45,7 +45,6 @@ The app talks to two separate domains that share SSO via CAS:
 
 1. **CAS** (`cer.ysu.edu.cn`) — unified identity gateway
 2. **JWXT** (`jwxt.ysu.edu.cn`) — academic affairs system (EMAP platform)
-
 Both use module-level `SimpleCookieJar` instances (`casJar`, `jwxtJar`). Cookie state must survive app restarts.
 
 **On native (Capacitor)**:
@@ -107,23 +106,20 @@ Release body follows this structure (top to bottom):
 ```markdown
 ## 更新说明
 
-### Bug 修复
-- **标题加粗**：详细描述问题原因和修复方案
-
 ### 新功能
 - **标题加粗**：描述功能是什么、用户如何使用
 
+### Bug 修复
+- **标题加粗**：详细描述问题原因和修复方案
+
 ### 改进
 - **标题加粗**：描述改动了什么、带来了什么好处
-
-### 技术细节
-- 内部实现变更、架构调整、依赖升级等
 
 **Full Changelog**: https://github.com/Youwenqwq/ysu-client/compare/v{PREV}...v{CURR}
 ```
 
 Rules:
-- Categories in order: Bug 修复 → 新功能 → 改进 → 技术细节
+- Categories in order: 新功能 → Bug 修复 → 改进
 - Each bullet starts with `- **加粗标题**：`
 - Description follows the colon, explaining the "what" and "why"
 - Include technical root cause for bug fixes
@@ -151,4 +147,4 @@ The release script (`scripts/release.sh`) auto-extracts `^\s*[-*]\s+` lines into
 ## Project Notes
 
 - Provider refactor validation: `pnpm run build` passed; Android cover-install from pre-refactor while preserving YSU login state kept core features working; provider switching remains untested.
-- `docs/` 目录用于存放设计文档和规格说明，**不需要提交到 git**。
+- `docs/` directory is used to store local reference docs, **needn't be included in git**
