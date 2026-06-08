@@ -12,6 +12,7 @@ export interface YsuNotifyPlugin {
 
   // ─── Server config ──────────────────────────────────────────────────────
   setServerConfig(options: { configJson: string }): Promise<void>;
+  setProviderIdentity(options: { providerId: string; accountHash: string }): Promise<void>;
 
   // ─── Cache read/write (JSON string) ─────────────────────────────────────
   getCachedGrades(): Promise<{ gradesJson: string }>;

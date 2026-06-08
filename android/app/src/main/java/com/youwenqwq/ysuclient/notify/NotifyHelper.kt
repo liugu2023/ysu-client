@@ -30,8 +30,14 @@ import java.util.concurrent.TimeUnit
  */
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
+sealed class FetchResult {
+    data class Success(val items: List<JSONObject>) : FetchResult()
+    data class Failure(val error: Exception? = null, val message: String? = null) : FetchResult()
+}
+
 object NotifyHelper {
     private const val TAG = "YsuNotify"
+    const val NOTIFY_SCHEMA_VERSION = 1
 
     // ─── OkHttp client with isolated cookie jar ──────────────────────────────
 
@@ -266,6 +272,57 @@ object NotifyHelper {
         } else {
             Quadruple(60, true, true, false)
         }
+    }
+
+    fun saveProviderIdentity(context: Context, providerId: String, accountHash: String) {
+        val oldProviderId = UnifiedCache.getString(context, UnifiedCache.KEY_NOTIFY_PROVIDER_ID, "")
+        val oldAccountHash = UnifiedCache.getString(context, UnifiedCache.KEY_NOTIFY_ACCOUNT_HASH, "")
+        val oldSchemaVersion = UnifiedCache.getInt(context, UnifiedCache.KEY_NOTIFY_SCHEMA_VERSION, 0)
+
+        if (oldSchemaVersion != NOTIFY_SCHEMA_VERSION || oldProviderId != providerId || oldAccountHash != accountHash) {
+            Log.d(TAG, "Notify identity changed; resetting baselines")
+            resetBaselines(context)
+        }
+
+        UnifiedCache.putString(context, UnifiedCache.KEY_NOTIFY_PROVIDER_ID, providerId)
+        UnifiedCache.putString(context, UnifiedCache.KEY_NOTIFY_ACCOUNT_HASH, accountHash)
+        UnifiedCache.putInt(context, UnifiedCache.KEY_NOTIFY_SCHEMA_VERSION, NOTIFY_SCHEMA_VERSION)
+    }
+
+    fun ensureBaselineIdentity(context: Context): Boolean {
+        val schemaVersion = UnifiedCache.getInt(context, UnifiedCache.KEY_NOTIFY_SCHEMA_VERSION, 0)
+        val providerId = UnifiedCache.getString(context, UnifiedCache.KEY_NOTIFY_PROVIDER_ID, "")
+        val accountHash = UnifiedCache.getString(context, UnifiedCache.KEY_NOTIFY_ACCOUNT_HASH, "")
+        if (schemaVersion == NOTIFY_SCHEMA_VERSION && providerId.isNotEmpty() && accountHash.isNotEmpty()) {
+            return true
+        }
+
+        Log.w(TAG, "Notify baseline identity missing or outdated; resetting baselines")
+        resetBaselines(context)
+        return false
+    }
+
+    fun resetBaselines(context: Context) {
+        UnifiedCache.remove(context, UnifiedCache.KEY_NOTIFY_CACHED_GRADES)
+        UnifiedCache.remove(context, UnifiedCache.KEY_NOTIFY_CACHED_EXAMS)
+        UnifiedCache.putBoolean(context, UnifiedCache.KEY_NOTIFY_GRADES_BASELINE_INITIALIZED, false)
+        UnifiedCache.putBoolean(context, UnifiedCache.KEY_NOTIFY_EXAMS_BASELINE_INITIALIZED, false)
+    }
+
+    fun isGradesBaselineInitialized(context: Context): Boolean {
+        return UnifiedCache.getBoolean(context, UnifiedCache.KEY_NOTIFY_GRADES_BASELINE_INITIALIZED, false)
+    }
+
+    fun isExamsBaselineInitialized(context: Context): Boolean {
+        return UnifiedCache.getBoolean(context, UnifiedCache.KEY_NOTIFY_EXAMS_BASELINE_INITIALIZED, false)
+    }
+
+    fun setGradesBaselineInitialized(context: Context, initialized: Boolean) {
+        UnifiedCache.putBoolean(context, UnifiedCache.KEY_NOTIFY_GRADES_BASELINE_INITIALIZED, initialized)
+    }
+
+    fun setExamsBaselineInitialized(context: Context, initialized: Boolean) {
+        UnifiedCache.putBoolean(context, UnifiedCache.KEY_NOTIFY_EXAMS_BASELINE_INITIALIZED, initialized)
     }
 
     fun setSessionExpired(context: Context, expired: Boolean) {
@@ -574,7 +631,7 @@ object NotifyHelper {
 
     // ─── Fetch grades ───────────────────────────────────────────────────────
 
-    fun fetchGrades(context: Context): List<JSONObject> {
+    fun fetchGrades(context: Context): FetchResult {
         val grades = mutableListOf<JSONObject>()
 
         try {
@@ -597,13 +654,16 @@ object NotifyHelper {
 
             if (code != 200) {
                 Log.w(TAG, "fetchGrades failed: code=$code")
-                return grades
+                return FetchResult.Failure(message = "fetchGrades failed: code=$code")
             }
 
             val json = JSONObject(body)
-            val datas = json.optJSONObject("datas") ?: return grades
-            val xscjcx = datas.optJSONObject("xscjcx") ?: return grades
-            val rows = xscjcx.optJSONArray("rows") ?: return grades
+            val datas = json.optJSONObject("datas")
+                ?: return FetchResult.Failure(message = "fetchGrades missing datas")
+            val xscjcx = datas.optJSONObject("xscjcx")
+                ?: return FetchResult.Failure(message = "fetchGrades missing xscjcx")
+            val rows = xscjcx.optJSONArray("rows")
+                ?: return FetchResult.Failure(message = "fetchGrades missing rows")
 
             for (i in 0 until rows.length()) {
                 val raw = rows.getJSONObject(i)
@@ -611,14 +671,15 @@ object NotifyHelper {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch grades", e)
+            return FetchResult.Failure(e)
         }
 
-        return grades
+        return FetchResult.Success(grades)
     }
 
     // ─── Fetch exams ────────────────────────────────────────────────────────
 
-    fun fetchExams(context: Context): List<JSONObject> {
+    fun fetchExams(context: Context): FetchResult {
         val exams = mutableListOf<JSONObject>()
 
         try {
@@ -627,7 +688,8 @@ object NotifyHelper {
             val apiWdksap = getApiPath(context, "exams")
 
             fetchWeu(context, appIdWdksap)
-            val term = getCurrentTerm(context) ?: ""
+            val term = getCurrentTerm(context)
+                ?: return FetchResult.Failure(message = "fetchExams missing current term")
 
             val param = JSONObject().apply {
                 put("XNXQDM", term)
@@ -639,13 +701,16 @@ object NotifyHelper {
 
             if (code != 200) {
                 Log.w(TAG, "fetchExams failed: code=$code")
-                return exams
+                return FetchResult.Failure(message = "fetchExams failed: code=$code")
             }
 
             val json = JSONObject(body)
-            val datas = json.optJSONObject("datas") ?: return exams
-            val cxxsksap = datas.optJSONObject("cxxsksap") ?: return exams
-            val rows = cxxsksap.optJSONArray("rows") ?: return exams
+            val datas = json.optJSONObject("datas")
+                ?: return FetchResult.Failure(message = "fetchExams missing datas")
+            val cxxsksap = datas.optJSONObject("cxxsksap")
+                ?: return FetchResult.Failure(message = "fetchExams missing cxxsksap")
+            val rows = cxxsksap.optJSONArray("rows")
+                ?: return FetchResult.Failure(message = "fetchExams missing rows")
 
             for (i in 0 until rows.length()) {
                 val raw = rows.getJSONObject(i)
@@ -653,9 +718,10 @@ object NotifyHelper {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch exams", e)
+            return FetchResult.Failure(e)
         }
 
-        return exams
+        return FetchResult.Success(exams)
     }
 
     // ─── Diff logic ─────────────────────────────────────────────────────────
@@ -702,11 +768,11 @@ object NotifyHelper {
     fun saveCachedGrades(context: Context, grades: List<JSONObject>) {
         val arr = JSONArray()
         for (g in grades) arr.put(g)
-        UnifiedCache.putString(context, UnifiedCache.KEY_CACHED_GRADES, arr.toString())
+        UnifiedCache.putString(context, UnifiedCache.KEY_NOTIFY_CACHED_GRADES, arr.toString())
     }
 
     fun getCachedGrades(context: Context): List<JSONObject> {
-        val str = UnifiedCache.getString(context, UnifiedCache.KEY_CACHED_GRADES, "[]")
+        val str = UnifiedCache.getString(context, UnifiedCache.KEY_NOTIFY_CACHED_GRADES, "[]")
         return try {
             val arr = JSONArray(str)
             (0 until arr.length()).map { arr.getJSONObject(it) }
@@ -718,11 +784,11 @@ object NotifyHelper {
     fun saveCachedExams(context: Context, exams: List<JSONObject>) {
         val arr = JSONArray()
         for (e in exams) arr.put(e)
-        UnifiedCache.putString(context, UnifiedCache.KEY_CACHED_EXAMS, arr.toString())
+        UnifiedCache.putString(context, UnifiedCache.KEY_NOTIFY_CACHED_EXAMS, arr.toString())
     }
 
     fun getCachedExams(context: Context): List<JSONObject> {
-        val str = UnifiedCache.getString(context, UnifiedCache.KEY_CACHED_EXAMS, "[]")
+        val str = UnifiedCache.getString(context, UnifiedCache.KEY_NOTIFY_CACHED_EXAMS, "[]")
         return try {
             val arr = JSONArray(str)
             (0 until arr.length()).map { arr.getJSONObject(it) }

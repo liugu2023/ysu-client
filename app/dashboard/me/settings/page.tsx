@@ -338,7 +338,7 @@ export default function SettingsPage() {
                   onCheckedChange={(enabled) => {
                     setNotifyEnabled(enabled);
                     if (enabled) {
-                      startNotifyIfNeeded(nativeNotification).then(() => triggerNotifyCheck()).catch(() => {});
+                      startNotifyIfNeeded(nativeNotification, provider.id).then(() => triggerNotifyCheck()).catch(() => {});
                     } else {
                       stopNativePolling().catch(() => {});
                     }

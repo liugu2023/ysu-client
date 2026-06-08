@@ -7,11 +7,22 @@
  * 上课提醒由 AlarmManager 在指定时间触发 ClassAlarmReceiver。
  */
 import { useSettingsStore } from "../stores/settings";
+import { useAuthStore } from "../stores/auth";
 import { isCapacitor } from "./platform";
 import { NotifyPlugin } from "./notify-plugin";
 import type { Course, CurrentWeek, ClassPeriod, ProviderNativeNotification } from "@/providers/types";
 
 // ─── Config Sync ────────────────────────────────────────────────────────── //
+
+function hashNotifyAccount(providerId: string, username: string): string {
+  let hash = 2166136261;
+  const input = `${providerId}:${username}`;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+}
 
 export async function syncServerConfigToNative(
   nativeNotification?: ProviderNativeNotification,
@@ -22,6 +33,21 @@ export async function syncServerConfigToNative(
     await NotifyPlugin.setServerConfig({ configJson: JSON.stringify(config) });
   } catch (e) {
     console.warn("Failed to sync server config to native", e);
+  }
+}
+
+export async function syncProviderIdentityToNative(providerId?: string): Promise<void> {
+  if (!isCapacitor() || !providerId) return;
+  const username = useAuthStore.getState().username;
+  if (!username) return;
+
+  try {
+    await NotifyPlugin.setProviderIdentity({
+      providerId,
+      accountHash: hashNotifyAccount(providerId, username),
+    });
+  } catch (e) {
+    console.warn("Failed to sync provider identity to native", e);
   }
 }
 
@@ -72,6 +98,7 @@ export async function syncCastgcToNative(
  */
 export async function startNotifyIfNeeded(
   nativeNotification?: ProviderNativeNotification,
+  providerId?: string,
 ): Promise<void> {
   if (!isCapacitor() || !nativeNotification) return;
 
@@ -79,7 +106,8 @@ export async function startNotifyIfNeeded(
   if (!notifyEnabled) return;
 
   await syncServerConfigToNative(nativeNotification);
-  await startNativePolling(nativeNotification);
+  await syncProviderIdentityToNative(providerId);
+  await startNativePolling(nativeNotification, providerId);
 }
 
 /**
@@ -95,6 +123,7 @@ export async function triggerNotifyCheck(): Promise<void> {
  */
 export async function startNativePolling(
   nativeNotification?: ProviderNativeNotification,
+  providerId?: string,
 ): Promise<void> {
   if (!isCapacitor() || !nativeNotification) return;
 
@@ -106,7 +135,8 @@ export async function startNativePolling(
     await NotifyPlugin.requestPermissions();
   }
 
-  // 同步认证 token
+  // 同步 provider 身份和认证 token
+  await syncProviderIdentityToNative(providerId);
   await syncCastgcToNative(nativeNotification);
 
   // 启动轮询

@@ -17,11 +17,11 @@ export function NotifyProvider() {
 
   useEffect(() => {
     if (!isCapacitor() || !isAuthenticated || !nativeNotification) return;
-    startNotifyIfNeeded(nativeNotification);
+    startNotifyIfNeeded(nativeNotification, provider.id);
     return () => {
       stopNotify();
     };
-  }, [isAuthenticated, nativeNotification]);
+  }, [isAuthenticated, nativeNotification, provider.id]);
 
   return null;
 }
