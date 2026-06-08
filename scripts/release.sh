@@ -94,6 +94,7 @@ cleanup() {
   [[ -n "${TMP_NOTES:-}" ]] && rm -f "$TMP_NOTES"
   [[ -n "${TMP_VERSION_BASE:-}" ]] && rm -f "$TMP_VERSION_BASE"
   [[ -n "${TMP_STABLE_RELEASE_DIR:-}" ]] && rm -rf "$TMP_STABLE_RELEASE_DIR"
+  [[ -n "${APK_ASSET_PATH:-}" ]] && rm -f "$APK_ASSET_PATH"
   rm -rf .edgeone
 }
 trap cleanup EXIT
@@ -165,13 +166,17 @@ console.log(`${versionName} ${versionCode}`);
 NODE
 )
 
+APK_ASSET_NAME="app-release-${VERSION}.apk"
+APK_ASSET_PATH="${APK_ASSET_NAME}"
+cp "${APK_PATH}" "${APK_ASSET_PATH}"
+
 RELEASE_FLAGS=(--latest)
 if [[ "${IS_PRERELEASE}" == "true" ]]; then
   RELEASE_FLAGS=(--prerelease)
 fi
 
 echo "Creating GitHub release ${TAG}..."
-gh release create "${TAG}" dist.zip "${APK_PATH}" \
+gh release create "${TAG}" dist.zip "${APK_ASSET_PATH}" \
   --target "$(git rev-parse HEAD)" \
   --title "${TAG}" \
   --generate-notes \
@@ -202,14 +207,15 @@ elif [[ "${IS_PRERELEASE}" == "true" ]]; then
   LATEST_STABLE_TAG=$(gh api "repos/${REPO}/releases/latest" -q '.tag_name' 2>/dev/null || true)
   if [[ -n "${LATEST_STABLE_TAG:-}" ]]; then
     gh release download "$LATEST_STABLE_TAG" --repo "$REPO" \
-      --pattern "dist.zip" --pattern "app-release.apk" --pattern "version.json" \
+      --pattern "dist.zip" --pattern "app-release*.apk" --pattern "version.json" \
       --dir "$TMP_STABLE_RELEASE_DIR" 2>/dev/null || true
   fi
   if [[ -f "$TMP_STABLE_RELEASE_DIR/version.json" ]]; then
     cp "$TMP_STABLE_RELEASE_DIR/version.json" "$TMP_VERSION_BASE"
     mkdir -p website/public/updates
     [[ -f "$TMP_STABLE_RELEASE_DIR/dist.zip" ]] && cp "$TMP_STABLE_RELEASE_DIR/dist.zip" website/public/updates/dist.zip
-    [[ -f "$TMP_STABLE_RELEASE_DIR/app-release.apk" ]] && cp "$TMP_STABLE_RELEASE_DIR/app-release.apk" website/public/updates/app-release.apk
+    STABLE_APK=$(find "$TMP_STABLE_RELEASE_DIR" -maxdepth 1 -name 'app-release*.apk' -print -quit)
+    [[ -n "${STABLE_APK:-}" ]] && cp "$STABLE_APK" website/public/updates/app-release.apk
   else
     echo "Warning: stable version.json unavailable; prerelease manifest will not include stable metadata."
     echo '{}' > "$TMP_VERSION_BASE"
@@ -218,7 +224,7 @@ else
   echo '{}' > "$TMP_VERSION_BASE"
 fi
 
-APK_DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/app-release.apk"
+APK_DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${APK_ASSET_NAME}"
 PRERELEASE_DIST_NAME="dist-${VERSION}.zip"
 PRERELEASE_DIST_URL="${OFFICIAL_UPDATES_BASE}${PRERELEASE_DIST_NAME}"
 PRERELEASE_APK_NAME="app-release-${VERSION}.apk"
@@ -291,6 +297,7 @@ gh release upload "${TAG}" version.json --clobber
 echo "Generating changelog.json..."
 gh api "repos/${REPO}/releases" | jq 'map({
   version: (.tag_name | ltrimstr("v")),
+  prerelease: .prerelease,
   date: (.published_at | fromdateiso8601 + 28800 | strftime("%Y-%m-%d")),
   body: .body
 })' > website/src/data/changelog.json
