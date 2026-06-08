@@ -7,6 +7,7 @@ import {
   checkCaptchaNeeded,
   prepareLogin,
   getJar,
+  NeedCaptchaError,
 } from "./protocol/cas";
 import { resetJWXT } from "./protocol/jwxt";
 import { initializeSession } from "./session";
@@ -81,8 +82,7 @@ export async function reloginYSU(): Promise<boolean> {
 
       return false;
     } catch (err) {
-      const e = err as Error & { code?: string };
-      if (e.code === "NEED_CAPTCHA") {
+      if (err instanceof NeedCaptchaError) {
         toast.error(getText("autoLogin.captchaRequired"));
       }
       return false;
