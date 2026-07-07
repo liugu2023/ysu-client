@@ -408,14 +408,14 @@ export default function DebugPage() {
 
   function handleSaveUserAgent() {
     setCustomUserAgent(normalizeCustomUserAgent(uaDraft));
-    toast.success("User-Agent 已保存");
+    toast.success(t("debug.userAgentSaved"));
     runDiagnostics();
   }
 
   function handleResetUserAgent() {
     setCustomUserAgent("");
     setUaDraft("");
-    toast.success("User-Agent 已恢复默认");
+    toast.success(t("debug.userAgentReset"));
     runDiagnostics();
   }
 
@@ -482,11 +482,11 @@ export default function DebugPage() {
               </div>
               <div className="flex flex-col gap-2 pt-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">请求 User-Agent</span>
+                  <span className="text-muted-foreground">{t("debug.requestUserAgent")}</span>
                   {customUserAgent ? (
-                    <Badge variant="secondary" className="text-[10px]">CUSTOM</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{t("debug.customUserAgent")}</Badge>
                   ) : (
-                    <Badge variant="outline" className="text-[10px]">DEFAULT</Badge>
+                    <Badge variant="outline" className="text-[10px]">{t("debug.defaultUserAgent")}</Badge>
                   )}
                 </div>
                 <span className="break-all text-[10px] font-mono text-muted-foreground">
@@ -494,7 +494,7 @@ export default function DebugPage() {
                 </span>
                 <Select onValueChange={handlePresetUserAgent}>
                   <SelectTrigger className="w-full" size="sm">
-                    <SelectValue placeholder="选择 UA 预设" />
+                    <SelectValue placeholder={t("debug.selectUserAgentPreset")} />
                   </SelectTrigger>
                   <SelectContent>
                     {USER_AGENT_PRESETS.map((preset) => (
@@ -507,17 +507,17 @@ export default function DebugPage() {
                 <Textarea
                   value={uaDraft}
                   onChange={(event) => setUaDraft(event.target.value)}
-                  placeholder="留空使用默认 User-Agent"
+                  placeholder={t("debug.emptyUserAgentPlaceholder")}
                   className="min-h-20 text-[11px] font-mono"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <Button variant="outline" size="sm" onClick={handleResetUserAgent}>
                     <RotateCcw className="size-3.5 mr-1" />
-                    恢复默认
+                    {t("debug.resetUserAgent")}
                   </Button>
                   <Button size="sm" onClick={handleSaveUserAgent}>
                     <Save className="size-3.5 mr-1" />
-                    保存 UA
+                    {t("debug.saveUserAgent")}
                   </Button>
                 </div>
               </div>

@@ -402,10 +402,10 @@ async function capacitorHttpSend(
   if (!hasHeader(headers, 'User-Agent')) {
     headers['User-Agent'] = getCustomUserAgent();
   }
-  if (!headers['Accept']) {
+  if (!hasHeader(headers, 'Accept')) {
     headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
   }
-  if (!headers['Accept-Language']) {
+  if (!hasHeader(headers, 'Accept-Language')) {
     headers['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8';
   }
 
