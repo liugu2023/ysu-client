@@ -492,7 +492,7 @@ export default function DebugPage() {
                 <span className="break-all text-[10px] font-mono text-muted-foreground">
                   {diag.platform.requestUserAgent}
                 </span>
-                <Select value="" onValueChange={handlePresetUserAgent}>
+                <Select onValueChange={handlePresetUserAgent}>
                   <SelectTrigger className="w-full" size="sm">
                     <SelectValue placeholder="选择 UA 预设" />
                   </SelectTrigger>
