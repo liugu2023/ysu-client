@@ -319,6 +319,7 @@ export async function fetchWithJar(
 }
 
 import { isCapacitor } from './native/platform';
+import { getCustomUserAgent } from './custom-user-agent';
 
 // Cache Capacitor core module to avoid dynamic import overhead on every request.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -398,6 +399,9 @@ async function capacitorHttpSend(
   }
 
   const headers: Record<string, string> = { ...(req.headers ?? {}) };
+  if (!hasHeader(headers, 'User-Agent')) {
+    headers['User-Agent'] = getCustomUserAgent();
+  }
   if (!headers['Accept']) {
     headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
   }
@@ -577,6 +581,11 @@ function stripBodyHeaders(
     out[k] = v;
   }
   return out;
+}
+
+function hasHeader(headers: Readonly<Record<string, string>>, name: string): boolean {
+  const lowerName = name.toLowerCase();
+  return Object.keys(headers).some((key) => key.toLowerCase() === lowerName);
 }
 
 function toHttpResponse(response: Response, requestUrl: string): HttpResponse {
